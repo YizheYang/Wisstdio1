@@ -1,13 +1,20 @@
 package com.github.YizheYang;
 
 import android.graphics.Bitmap;
-import android.media.Image;
+import android.graphics.BitmapFactory;
 
-public class Picture {
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
 
-	private Bitmap image;
+public class Picture implements Runnable{
 
-	private String message;
+	public Bitmap image;
+
+	public String message;
 
 	public Picture(String message ,Bitmap image){
 		this.image = image;
@@ -30,4 +37,76 @@ public class Picture {
 		return message;
 	}
 
+	public void run(){
+		String path = "http://shibe.online/api/shibes?count=1&urls=true&httpsUrls=true";
+//		Picture tempPicture = new Picture("0", null);
+		try {
+//			Log.d(TAG, "run: " + Thread.currentThread().getId());
+			URL url = new URL(getExactUrl(path));
+			HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+			connection.setRequestMethod("GET");
+			connection.setConnectTimeout(5 * 1000);
+			connection.setReadTimeout(8 * 1000);
+			if (connection.getResponseCode() == 200){
+				InputStream in = connection.getInputStream();
+				Bitmap bitmap = BitmapFactory.decodeStream(in);
+				this.message = url.getPath();
+				this.image = bitmap;
+//				Log.d(TAG, "run: " + url.getPath());
+//				Log.d(TAG, "run: " + bitmap);
+//				tempPicture = new Picture(url.getPath(), bitmap);
+//				Log.d(TAG, "run: " + tempPicture);
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		//return tempPicture;
+	}
+
+	private String getExactUrl(String url) throws IOException {
+		URL u = new URL(url);
+		HttpURLConnection con = (HttpURLConnection) u.openConnection();
+		con.setRequestMethod("GET");
+		con.setConnectTimeout(5 * 1000);
+		con.setReadTimeout(8 * 1000);
+		InputStream in = con.getInputStream();
+		BufferedReader br = new BufferedReader(new InputStreamReader(in));
+		StringBuilder res = new StringBuilder();
+		String line;
+		while ((line = br.readLine()) != null){
+			res.append(line);
+		}
+		String result = (String)res.toString();
+		result = result.substring(result.indexOf("[") + 2 , result.indexOf("]") - 1);//cut
+		return result;
+	}
+
+	public Picture initPicture(){
+		String path = "http://shibe.online/api/shibes?count=1&urls=true&httpsUrls=true";
+		final Picture[] tempPicture = {new Picture("0", null)};
+		new Thread(new Runnable() {
+			@Override
+			public void run() {
+				try {
+					//			Log.d(TAG, "run: " + Thread.currentThread().getId());
+					URL url = new URL(getExactUrl(path));
+					HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+					connection.setRequestMethod("GET");
+					connection.setConnectTimeout(5 * 1000);
+					connection.setReadTimeout(8 * 1000);
+					if (connection.getResponseCode() == 200){
+						InputStream in = connection.getInputStream();
+						Bitmap bitmap = BitmapFactory.decodeStream(in);
+						//				Log.d(TAG, "run: " + url.getPath());
+						//				Log.d(TAG, "run: " + bitmap);
+						tempPicture[0] = new Picture(url.getPath(), bitmap);
+						//				Log.d(TAG, "run: " + tempPicture);
+					}
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+		}).start();
+		return tempPicture[0];
+	}
 }

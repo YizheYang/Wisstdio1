@@ -14,10 +14,12 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
+import android.view.View;
 import android.view.Window;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -42,29 +44,35 @@ import javax.net.ssl.HttpsURLConnection;
 public class MainActivity extends AppCompatActivity {
 
 	private static final String TAG = "MainActivity" ;
-	private TextView text;
-	private ImageView image;
-	private final String path = "http://shibe.online/api/shibes?count=1&urls=true&httpsUrls=true";
+	private String path = "http://shibe.online/api/shibes?count=1&urls=true&httpsUrls=true";
+	private ProgressBar pgb;
 	private List<Picture> pictureList = new ArrayList<>();
 	private int i,j;
-	private Picture tempPicture = new Picture("0", null);
+	private Picture tempPicture;
+	protected final int pictureNum = 2;
 
 	@SuppressLint("HandlerLeak")
 	private final Handler handler = new Handler() {
 		@Override
 		public void handleMessage(Message msg) {
 			super.handleMessage(msg);
+			tempPicture = new Picture("0", null);
 			if (msg.what == 1) {
 				Object[] objects = (Object[])msg.obj;
-				Bitmap bitmap = (Bitmap) objects[0];//(Bitmap) msg.obj;
+				Bitmap bitmap = (Bitmap) objects[0];
 				String message = (String) objects[1];
 				tempPicture = new Picture(message, bitmap);
-			}
-			else if (msg.what == 2){
-				String message = (String) msg.obj;
-				tempPicture = new Picture(message);
-			}
-			else{
+				pictureList.add(tempPicture);
+				//pgb.setProgress(pictureList.size());
+				if (pictureList.size() == pictureNum){
+					pgb.setVisibility(View.GONE);
+					RecyclerView recyclerView = (RecyclerView)findViewById(R.id.recyclerView);
+					LinearLayoutManager linearLayoutManager = new LinearLayoutManager(MainActivity.this);
+					recyclerView.setLayoutManager(linearLayoutManager);
+					PictureAdapter adapter = new PictureAdapter(pictureList);
+					recyclerView.setAdapter(adapter);
+				}
+			}else{
 				Toast.makeText(MainActivity.this ,"error" ,Toast.LENGTH_SHORT).show();
 			}
 		}
@@ -77,34 +85,44 @@ public class MainActivity extends AppCompatActivity {
 		if(getSupportActionBar() != null){
 			getSupportActionBar().hide();
 		}
-		text = (TextView) findViewById(R.id.dogpath);
-		image = (ImageView)findViewById(R.id.dogimage);
-		initPicture();
-		RecyclerView recyclerView = (RecyclerView)findViewById(R.id.recyclerView);
-		LinearLayoutManager linearLayoutManager = new LinearLayoutManager(this);
-		recyclerView.setLayoutManager(linearLayoutManager);
-		PictureAdapter adapter = new PictureAdapter(pictureList);
-		recyclerView.setAdapter(adapter);
+//		text = (TextView) findViewById(R.id.dogpath);
+//		image = (ImageView)findViewById(R.id.dogimage);
+		pgb = (ProgressBar)findViewById(R.id.progressbar);
 
+		initPicture();
+
+//		RecyclerView recyclerView = (RecyclerView)findViewById(R.id.recyclerView);
+//		LinearLayoutManager linearLayoutManager = new LinearLayoutManager(this);
+//		recyclerView.setLayoutManager(linearLayoutManager);
+//		PictureAdapter adapter = new PictureAdapter(pictureList);
+//		recyclerView.setAdapter(adapter);
 	}
 
 	private void initPicture(){
-		boolean flag;
-		for (i = 0;i < 10;i++){
-			flag = true;
+//		boolean flag;
+		for (i = 0;i < pictureNum;i++){
+//			flag = true;
 			sendRequestWitHttpURLConnection();
-			for (j = 0;j < pictureList.size();j++){
-				if (pictureList.contains(tempPicture)){
-					i--;
-					flag = false;
-					break;
-				}
-			}
-			if (flag){
-				pictureList.add(tempPicture);
+//			for (j = 0;j < pictureList.size();j++){
+//				if (pictureList.contains(tempPicture)){
+//					i--;
+//					flag = false;
+//					break;
+//				}
+//			}
+//			if (flag){
 
-			}
+//
+//			}
 		}
+
+//		for (i = 0;i < 10;i++){
+//			//tempPicture.run();
+//			Picture temp = new Picture("0" ,null);
+//			tempPicture = temp.initPicture();
+//
+//			pictureList.add(tempPicture);
+//		}
 	}
 
 	private String getExactUrl(String url) throws IOException {
@@ -139,36 +157,28 @@ public class MainActivity extends AppCompatActivity {
 					if (connection.getResponseCode() == 200){
 						InputStream in = connection.getInputStream();
 						Bitmap bitmap = BitmapFactory.decodeStream(in);
-						//Bean bean = new Bean();
-
-//						Object[] obj = new Object[2];
-//						obj[0] = bitmap;
-//						obj[1] = url.getPath();
-//						Message pic = new Message();
-//						pic.what = 1;
-//						pic.obj = obj;
-//						handler.sendMessage(pic);
-						Log.d(TAG, "run: " + url.getPath());
-						Log.d(TAG, "run: " + bitmap);
-						tempPicture = new Picture(url.getPath(), bitmap);
-						Log.d(TAG, "run: " + tempPicture);
-//						Message mes = new Message();
-//						mes.what = 2;
-//						mes.obj = url.getPath();
-//						handler.sendMessage(mes);
-//						System.out.println(mes.what);
-
+						Object[] obj = new Object[2];
+						obj[0] = bitmap;
+						obj[1] = url.getAuthority();
+						Message pic = new Message();
+						pic.what = 1;
+						pic.obj = obj;
+						handler.sendMessage(pic);
+//						Log.d(TAG, "run: " + url.getPath());
+//						Log.d(TAG, "run: " + bitmap);
 					}
 					else{
 						Message message = new Message();
 						message.what = 0;
 						handler.sendMessage(message);
 					}
+					Thread.sleep(1000);
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
 			}
 		}).start();
+
 	}
 
 //	private void parseJSONWithGSON(String jsonData){
