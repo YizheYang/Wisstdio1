@@ -3,6 +3,7 @@ package com.github.YizheYang;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -49,7 +50,7 @@ public class MainActivity extends AppCompatActivity {
 	private List<Picture> pictureList = new ArrayList<>();
 	private int i,j;
 	private Picture tempPicture;
-	protected final int pictureNum = 2;
+	protected final int pictureNum = 10;
 
 	@SuppressLint("HandlerLeak")
 	private final Handler handler = new Handler() {
@@ -67,8 +68,8 @@ public class MainActivity extends AppCompatActivity {
 				if (pictureList.size() == pictureNum){
 					pgb.setVisibility(View.GONE);
 					RecyclerView recyclerView = (RecyclerView)findViewById(R.id.recyclerView);
-					LinearLayoutManager linearLayoutManager = new LinearLayoutManager(MainActivity.this);
-					recyclerView.setLayoutManager(linearLayoutManager);
+					GridLayoutManager LayoutManager = new GridLayoutManager(MainActivity.this, 3);
+					recyclerView.setLayoutManager(LayoutManager);
 					PictureAdapter adapter = new PictureAdapter(pictureList);
 					recyclerView.setAdapter(adapter);
 				}
