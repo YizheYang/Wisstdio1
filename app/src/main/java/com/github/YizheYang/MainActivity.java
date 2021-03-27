@@ -1,15 +1,186 @@
 package com.github.YizheYang;
 
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
+import android.annotation.SuppressLint;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.media.Image;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
+import android.util.Log;
+import android.view.Window;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.ListView;
+import android.widget.TextView;
+import android.widget.Toast;
+
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.ProtocolException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.net.ssl.HttpsURLConnection;
+
+
 
 public class MainActivity extends AppCompatActivity {
+
+	private static final String TAG = "MainActivity" ;
+	private TextView text;
+	private ImageView image;
+	private final String path = "http://shibe.online/api/shibes?count=1&urls=true&httpsUrls=true";
+	private List<Picture> pictureList = new ArrayList<>();
+	private int i,j;
+	private Picture tempPicture = new Picture("0", null);
+
+	@SuppressLint("HandlerLeak")
+	private final Handler handler = new Handler() {
+		@Override
+		public void handleMessage(Message msg) {
+			super.handleMessage(msg);
+			if (msg.what == 1) {
+				Object[] objects = (Object[])msg.obj;
+				Bitmap bitmap = (Bitmap) objects[0];//(Bitmap) msg.obj;
+				String message = (String) objects[1];
+				tempPicture = new Picture(message, bitmap);
+			}
+			else if (msg.what == 2){
+				String message = (String) msg.obj;
+				tempPicture = new Picture(message);
+			}
+			else{
+				Toast.makeText(MainActivity.this ,"error" ,Toast.LENGTH_SHORT).show();
+			}
+		}
+	};
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
-		//;
+		if(getSupportActionBar() != null){
+			getSupportActionBar().hide();
+		}
+		text = (TextView) findViewById(R.id.dogpath);
+		image = (ImageView)findViewById(R.id.dogimage);
+		initPicture();
+		RecyclerView recyclerView = (RecyclerView)findViewById(R.id.recyclerView);
+		LinearLayoutManager linearLayoutManager = new LinearLayoutManager(this);
+		recyclerView.setLayoutManager(linearLayoutManager);
+		PictureAdapter adapter = new PictureAdapter(pictureList);
+		recyclerView.setAdapter(adapter);
+
 	}
+
+	private void initPicture(){
+		boolean flag;
+		for (i = 0;i < 10;i++){
+			flag = true;
+			sendRequestWitHttpURLConnection();
+			for (j = 0;j < pictureList.size();j++){
+				if (pictureList.contains(tempPicture)){
+					i--;
+					flag = false;
+					break;
+				}
+			}
+			if (flag){
+				pictureList.add(tempPicture);
+
+			}
+		}
+	}
+
+	private String getExactUrl(String url) throws IOException {
+		URL u = new URL(url);
+		HttpURLConnection con = (HttpURLConnection) u.openConnection();
+		con.setRequestMethod("GET");
+		con.setConnectTimeout(5 * 1000);
+		con.setReadTimeout(8 * 1000);
+		InputStream in = con.getInputStream();
+		BufferedReader br = new BufferedReader(new InputStreamReader(in));
+		StringBuilder res = new StringBuilder();
+		String line;
+		while ((line = br.readLine()) != null){
+			res.append(line);
+		}
+		String result = (String)res.toString();
+		result = result.substring(result.indexOf("[") + 2 , result.indexOf("]") - 1);//cut
+		return result;
+	}
+
+	private void sendRequestWitHttpURLConnection(){
+		new Thread(new Runnable() {
+			@Override
+			public void run() {
+				try {
+					Log.d(TAG, "run: " + Thread.currentThread().getId());
+					URL url = new URL(getExactUrl(path));
+					HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+					connection.setRequestMethod("GET");
+					connection.setConnectTimeout(5 * 1000);
+					connection.setReadTimeout(8 * 1000);
+					if (connection.getResponseCode() == 200){
+						InputStream in = connection.getInputStream();
+						Bitmap bitmap = BitmapFactory.decodeStream(in);
+						//Bean bean = new Bean();
+
+//						Object[] obj = new Object[2];
+//						obj[0] = bitmap;
+//						obj[1] = url.getPath();
+//						Message pic = new Message();
+//						pic.what = 1;
+//						pic.obj = obj;
+//						handler.sendMessage(pic);
+						Log.d(TAG, "run: " + url.getPath());
+						Log.d(TAG, "run: " + bitmap);
+						tempPicture = new Picture(url.getPath(), bitmap);
+						Log.d(TAG, "run: " + tempPicture);
+//						Message mes = new Message();
+//						mes.what = 2;
+//						mes.obj = url.getPath();
+//						handler.sendMessage(mes);
+//						System.out.println(mes.what);
+
+					}
+					else{
+						Message message = new Message();
+						message.what = 0;
+						handler.sendMessage(message);
+					}
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+		}).start();
+	}
+
+//	private void parseJSONWithGSON(String jsonData){
+//		Gson gson = new Gson();
+//		List<Picture> pictureList = gson.fromJson(jsonData ,new TypeToken<List<Picture>>(){}.getType());
+//		for (Picture picture : pictureList){
+//			Message message = new Message();
+//			message.what = 1;
+//			message.obj = picture;
+//			handler.sendMessage(message);
+//		}
+//
+//	}
+
 }
