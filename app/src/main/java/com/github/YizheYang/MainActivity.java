@@ -1,26 +1,33 @@
 package com.github.YizheYang;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+
 import android.annotation.SuppressLint;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.Image;
+import android.net.sip.SipSession;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.Window;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.ProgressBar;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -40,17 +47,21 @@ import java.util.List;
 
 import javax.net.ssl.HttpsURLConnection;
 
+import static java.lang.Thread.sleep;
 
 
 public class MainActivity extends AppCompatActivity {
 
 	private static final String TAG = "MainActivity" ;
 	private String path = "http://shibe.online/api/shibes?count=1&urls=true&httpsUrls=true";
+	private RecyclerView recyclerView;
 	private ProgressBar pgb;
+
+	private TextView tag;
 	private List<Picture> pictureList = new ArrayList<>();
-	private int i,j;
+	private int i;
 	private Picture tempPicture;
-	protected final int pictureNum = 10;
+	protected final int pictureNum = 31;
 
 	@SuppressLint("HandlerLeak")
 	private final Handler handler = new Handler() {
@@ -65,13 +76,11 @@ public class MainActivity extends AppCompatActivity {
 				tempPicture = new Picture(message, bitmap);
 				pictureList.add(tempPicture);
 				//pgb.setProgress(pictureList.size());
-				if (pictureList.size() == pictureNum){
+				if (pictureList.size() != 0) {
 					pgb.setVisibility(View.GONE);
-					RecyclerView recyclerView = (RecyclerView)findViewById(R.id.recyclerView);
-					GridLayoutManager LayoutManager = new GridLayoutManager(MainActivity.this, 3);
-					recyclerView.setLayoutManager(LayoutManager);
-					PictureAdapter adapter = new PictureAdapter(pictureList);
-					recyclerView.setAdapter(adapter);
+					Message re = new Message();
+					re.what = 2;
+					refresh.sendMessage(re);
 				}
 			}else{
 				Toast.makeText(MainActivity.this ,"error" ,Toast.LENGTH_SHORT).show();
@@ -79,19 +88,58 @@ public class MainActivity extends AppCompatActivity {
 		}
 	};
 
+	@SuppressLint("HandlerLeak")
+	private final Handler refresh = new Handler(){
+		@Override
+		public void handleMessage(@NonNull Message msg) {
+			super.handleMessage(msg);
+			if(msg.what == 2){
+				PictureAdapter adapter = new PictureAdapter(pictureList);
+				recyclerView.setAdapter(adapter);
+				GridLayoutManager LayoutManager = new GridLayoutManager(MainActivity.this, 3);
+				recyclerView.setLayoutManager(LayoutManager);
+//				View header = LayoutInflater.from(MainActivity.this).inflate(R.layout.activity_main, recyclerView, false);
+//				adapter.setHeaderView(header);
+//				Log.d(TAG, "LayoutManager.findLastCompletelyVisibleItemPosition(): " + LayoutManager.findLastCompletelyVisibleItemPosition());
+//				Log.d(TAG, "LayoutManager.findFirstCompletelyVisibleItemPosition(): " + LayoutManager.findFirstCompletelyVisibleItemPosition());
+
+			}
+		}
+	};
+
+
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
-		if(getSupportActionBar() != null){
-			getSupportActionBar().hide();
-		}
-//		text = (TextView) findViewById(R.id.dogpath);
-//		image = (ImageView)findViewById(R.id.dogimage);
+//		if(getSupportActionBar() != null){
+//			getSupportActionBar().hide();
+//		}
 		pgb = (ProgressBar)findViewById(R.id.progressbar);
-
+		tag = (TextView)findViewById(R.id.tag);
+		recyclerView = (RecyclerView)findViewById(R.id.recyclerView);
 		initPicture();
 
+		recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+			@Override
+			public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
+				super.onScrollStateChanged(recyclerView, newState);
+				if (!recyclerView.canScrollVertically(1)){
+					pictureList = new ArrayList<>();
+					initPicture();
+				}
+				Log.d(TAG, "recyclerView.canScrollVertically(-1) " + recyclerView.canScrollVertically(-1));
+				Log.d(TAG, "recyclerView.canScrollVertically(1) " + recyclerView.canScrollVertically(1));
+			}
+		});
+
+//		ScrollView scr = new ScrollView();
+//		scr.setOnScrollChangeListener(new View.OnScrollChangeListener() {
+//			@Override
+//			public void onScrollChange(View v, int scrollX, int scrollY, int oldScrollX, int oldScrollY) {
+//
+//			}
+//		});
 //		RecyclerView recyclerView = (RecyclerView)findViewById(R.id.recyclerView);
 //		LinearLayoutManager linearLayoutManager = new LinearLayoutManager(this);
 //		recyclerView.setLayoutManager(linearLayoutManager);
@@ -100,21 +148,8 @@ public class MainActivity extends AppCompatActivity {
 	}
 
 	private void initPicture(){
-//		boolean flag;
 		for (i = 0;i < pictureNum;i++){
-//			flag = true;
 			sendRequestWitHttpURLConnection();
-//			for (j = 0;j < pictureList.size();j++){
-//				if (pictureList.contains(tempPicture)){
-//					i--;
-//					flag = false;
-//					break;
-//				}
-//			}
-//			if (flag){
-
-//
-//			}
 		}
 
 //		for (i = 0;i < 10;i++){
@@ -173,7 +208,7 @@ public class MainActivity extends AppCompatActivity {
 						message.what = 0;
 						handler.sendMessage(message);
 					}
-					Thread.sleep(1000);
+					sleep(1000);
 				} catch (Exception e) {
 					e.printStackTrace();
 				}

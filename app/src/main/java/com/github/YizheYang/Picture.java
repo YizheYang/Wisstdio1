@@ -10,7 +10,7 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 
-public class Picture implements Runnable{
+public class Picture {
 
 	public Bitmap image;
 
@@ -83,12 +83,12 @@ public class Picture implements Runnable{
 
 	public Picture initPicture(){
 		String path = "http://shibe.online/api/shibes?count=1&urls=true&httpsUrls=true";
-		final Picture[] tempPicture = {new Picture("0", null)};
+		final Picture[] tempPicture = new Picture[1];
 		new Thread(new Runnable() {
 			@Override
 			public void run() {
 				try {
-					//			Log.d(TAG, "run: " + Thread.currentThread().getId());
+		//			Log.d(TAG, "run: " + Thread.currentThread().getId());
 					URL url = new URL(getExactUrl(path));
 					HttpURLConnection connection = (HttpURLConnection) url.openConnection();
 					connection.setRequestMethod("GET");
@@ -109,4 +109,5 @@ public class Picture implements Runnable{
 		}).start();
 		return tempPicture[0];
 	}
+
 }
