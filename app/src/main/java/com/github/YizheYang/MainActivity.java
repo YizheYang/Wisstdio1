@@ -57,7 +57,6 @@ public class MainActivity extends AppCompatActivity {
 	private RecyclerView recyclerView;
 	private ProgressBar pgb;
 
-	private TextView tag;
 	private List<Picture> pictureList = new ArrayList<>();
 	private int i;
 	private Picture tempPicture;
@@ -98,11 +97,6 @@ public class MainActivity extends AppCompatActivity {
 				recyclerView.setAdapter(adapter);
 				GridLayoutManager LayoutManager = new GridLayoutManager(MainActivity.this, 3);
 				recyclerView.setLayoutManager(LayoutManager);
-//				View header = LayoutInflater.from(MainActivity.this).inflate(R.layout.activity_main, recyclerView, false);
-//				adapter.setHeaderView(header);
-//				Log.d(TAG, "LayoutManager.findLastCompletelyVisibleItemPosition(): " + LayoutManager.findLastCompletelyVisibleItemPosition());
-//				Log.d(TAG, "LayoutManager.findFirstCompletelyVisibleItemPosition(): " + LayoutManager.findFirstCompletelyVisibleItemPosition());
-
 			}
 		}
 	};
@@ -116,7 +110,7 @@ public class MainActivity extends AppCompatActivity {
 //			getSupportActionBar().hide();
 //		}
 		pgb = (ProgressBar)findViewById(R.id.progressbar);
-		tag = (TextView)findViewById(R.id.tag);
+
 		recyclerView = (RecyclerView)findViewById(R.id.recyclerView);
 		initPicture();
 

@@ -20,9 +20,6 @@ import java.util.List;
 public class PictureAdapter extends RecyclerView.Adapter<PictureAdapter.ViewHolder> {
 
 	private List<Picture> mPictureList;
-	public static View mHeaderView;
-	public static final int TYPE_BUTTON = 0;
-	public static final int TYPE_NORMAL = 1;
 
 	static class ViewHolder extends RecyclerView.ViewHolder{
 		TextView text;
@@ -30,7 +27,6 @@ public class PictureAdapter extends RecyclerView.Adapter<PictureAdapter.ViewHold
 
 		public ViewHolder(View view){
 			super(view);
-			if(itemView == mHeaderView) return;
 			text = (TextView)view.findViewById(R.id.dogpath);
 			image = (ImageView)view.findViewById(R.id.dogimage);
 		}
@@ -42,7 +38,6 @@ public class PictureAdapter extends RecyclerView.Adapter<PictureAdapter.ViewHold
 
 	@Override
 	public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-		if(mHeaderView != null && viewType == TYPE_BUTTON) return new ViewHolder(mHeaderView);
 		View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.picture_item, parent, false);
 		ViewHolder holder = new ViewHolder(view);
 		return holder;
@@ -60,30 +55,4 @@ public class PictureAdapter extends RecyclerView.Adapter<PictureAdapter.ViewHold
 		return mPictureList.size();
 	}
 
-	@Override
-	public void onAttachedToRecyclerView(@NonNull RecyclerView recyclerView) {
-		super.onAttachedToRecyclerView(recyclerView);
-		RecyclerView.LayoutManager layoutManager = recyclerView.getLayoutManager();
-		if (layoutManager instanceof GridLayoutManager){
-			final GridLayoutManager gridLayoutManager = (GridLayoutManager)layoutManager;
-			gridLayoutManager.setSpanSizeLookup(new GridLayoutManager.SpanSizeLookup() {
-				@Override
-				public int getSpanSize(int position) {
-					return getItemViewType(position) == TYPE_BUTTON ? gridLayoutManager.getSpanCount() : 1;
-				}
-			});
-		}
-	}
-
-	@Override
-	public int getItemViewType(int position) {
-		if(mHeaderView == null) return TYPE_NORMAL;
-		if(position == 0) return TYPE_BUTTON;
-		return TYPE_NORMAL;
-	}
-
-	public void setHeaderView(View headerView){
-		mHeaderView = headerView;
-		notifyItemInserted(0);
-	}
 }
