@@ -1,20 +1,13 @@
 package com.github.YizheYang;
 
-import android.content.Context;
-import android.media.Image;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ArrayAdapter;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class PictureAdapter extends RecyclerView.Adapter<PictureAdapter.ViewHolder> {
@@ -27,8 +20,8 @@ public class PictureAdapter extends RecyclerView.Adapter<PictureAdapter.ViewHold
 
 		public ViewHolder(View view){
 			super(view);
-			text = (TextView)view.findViewById(R.id.dogpath);
-			image = (ImageView)view.findViewById(R.id.dogimage);
+			text = (TextView)view.findViewById(R.id.dog_path);
+			image = (ImageView)view.findViewById(R.id.dog_image);
 		}
 	}
 

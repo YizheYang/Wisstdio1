@@ -1,33 +1,20 @@
 package com.github.YizheYang;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.RequiresApi;
-import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.GridLayoutManager;
-import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 
 import android.annotation.SuppressLint;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.media.Image;
-import android.net.sip.SipSession;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
-import android.view.LayoutInflater;
 import android.view.View;
-import android.view.Window;
-import android.widget.Button;
-import android.widget.ImageView;
-import android.widget.LinearLayout;
-import android.widget.ListView;
 import android.widget.ProgressBar;
-import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -37,15 +24,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.ProtocolException;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
-
-import javax.net.ssl.HttpsURLConnection;
 
 import static java.lang.Thread.sleep;
 
@@ -56,11 +37,14 @@ public class MainActivity extends AppCompatActivity {
 	private String path = "http://shibe.online/api/shibes?count=1&urls=true&httpsUrls=true";
 	private RecyclerView recyclerView;
 	private ProgressBar pgb;
-
+	private TextView refreshtext;
 	private List<Picture> pictureList = new ArrayList<>();
 	private int i;
 	private Picture tempPicture;
 	protected final int pictureNum = 31;
+
+//	final LayoutInflater inflater = LayoutInflater.from(this);
+//	final LinearLayout lin = (LinearLayout) findViewById(R.id.picture_layout);
 
 	@SuppressLint("HandlerLeak")
 	private final Handler handler = new Handler() {
@@ -80,6 +64,10 @@ public class MainActivity extends AppCompatActivity {
 					Message re = new Message();
 					re.what = 2;
 					refresh.sendMessage(re);
+//					PictureAdapter adapter = new PictureAdapter(pictureList);
+//					recyclerView.setAdapter(adapter);
+//					GridLayoutManager LayoutManager = new GridLayoutManager(MainActivity.this, 3);
+//					recyclerView.setLayoutManager(LayoutManager);
 				}
 			}else{
 				Toast.makeText(MainActivity.this ,"error" ,Toast.LENGTH_SHORT).show();
@@ -109,8 +97,8 @@ public class MainActivity extends AppCompatActivity {
 //		if(getSupportActionBar() != null){
 //			getSupportActionBar().hide();
 //		}
-		pgb = (ProgressBar)findViewById(R.id.progressbar);
-
+		pgb = (ProgressBar)findViewById(R.id.progressbar_top);
+		refreshtext = (TextView) findViewById(R.id.refreshing);
 		recyclerView = (RecyclerView)findViewById(R.id.recyclerView);
 		initPicture();
 
@@ -119,11 +107,24 @@ public class MainActivity extends AppCompatActivity {
 			public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
 				super.onScrollStateChanged(recyclerView, newState);
 				if (!recyclerView.canScrollVertically(1)){
-					pictureList = new ArrayList<>();
-					initPicture();
+					new Handler().postDelayed(new Runnable() {
+						@Override
+						public void run() {
+							if (!recyclerView.canScrollVertically(1)){
+								pgb.setVisibility(View.VISIBLE);
+								pictureList = new ArrayList<>();
+								initPicture();
+
+							}else if(!recyclerView.canScrollVertically(-1)){
+								refreshtext.setVisibility(View.VISIBLE);
+
+							}
+						}
+					}, 3000);
+					pgb.setVisibility(View.GONE);
 				}
-				Log.d(TAG, "recyclerView.canScrollVertically(-1) " + recyclerView.canScrollVertically(-1));
-				Log.d(TAG, "recyclerView.canScrollVertically(1) " + recyclerView.canScrollVertically(1));
+				Log.d(TAG, "recyclerView.canScrollVertically(bottom) " + recyclerView.canScrollVertically(-1));
+				Log.d(TAG, "recyclerView.canScrollVertically(top) " + recyclerView.canScrollVertically(1));
 			}
 		});
 
