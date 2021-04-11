@@ -33,6 +33,10 @@ public class Picture {
 		return image;
 	}
 
+	public Bitmap getCompressedImage(){
+		return Bitmap.createScaledBitmap(image, 130, 130,true);
+	}
+
 	public String getMessage(){
 		return message;
 	}

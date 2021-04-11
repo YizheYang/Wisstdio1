@@ -2,30 +2,54 @@ package com.github.YizheYang;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 
+import android.Manifest;
 import android.annotation.SuppressLint;
+import android.app.ActivityOptions;
+import android.app.AlertDialog;
+import android.app.Dialog;
+import android.content.DialogInterface;
+import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.drawable.BitmapDrawable;
+import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
+import android.provider.MediaStore;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
+import android.view.Window;
+import android.view.WindowManager;
+import android.widget.ImageView;
 import android.widget.ProgressBar;
-import android.widget.TextView;
+import android.widget.ScrollView;
 import android.widget.Toast;
 
 
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
+import java.net.URI;
 import java.net.URL;
+import java.security.Permission;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 
 import static java.lang.Thread.sleep;
@@ -36,12 +60,18 @@ public class MainActivity extends AppCompatActivity {
 	private static final String TAG = "MainActivity" ;
 	private String path = "http://shibe.online/api/shibes?count=1&urls=true&httpsUrls=true";
 	private RecyclerView recyclerView;
-	private ProgressBar pgb;
-	private TextView refreshtext;
+	private ProgressBar pgb_top;
+	private ProgressBar pgb_bottom;
+	private ScrollView scrollView;
+	private ImageView img;
+	PictureAdapter adapter;
+	public ImageView largeImage;
+	Dialog dialog;
+	AlertDialog.Builder builder;
 	private List<Picture> pictureList = new ArrayList<>();
 	private int i;
 	private Picture tempPicture;
-	protected final int pictureNum = 31;
+	protected int pictureNum = 3;
 
 //	final LayoutInflater inflater = LayoutInflater.from(this);
 //	final LinearLayout lin = (LinearLayout) findViewById(R.id.picture_layout);
@@ -59,8 +89,8 @@ public class MainActivity extends AppCompatActivity {
 				tempPicture = new Picture(message, bitmap);
 				pictureList.add(tempPicture);
 				//pgb.setProgress(pictureList.size());
-				if (pictureList.size() != 0) {
-					pgb.setVisibility(View.GONE);
+				if (pictureList.size() == pictureNum) {
+					pgb_top.setVisibility(View.GONE);
 					Message re = new Message();
 					re.what = 2;
 					refresh.sendMessage(re);
@@ -81,14 +111,50 @@ public class MainActivity extends AppCompatActivity {
 		public void handleMessage(@NonNull Message msg) {
 			super.handleMessage(msg);
 			if(msg.what == 2){
-				PictureAdapter adapter = new PictureAdapter(pictureList);
+				adapter = new PictureAdapter(pictureList);
 				recyclerView.setAdapter(adapter);
 				GridLayoutManager LayoutManager = new GridLayoutManager(MainActivity.this, 3);
 				recyclerView.setLayoutManager(LayoutManager);
+				adapter.setOnItemClickListener(new PictureAdapter.OnItemClickListener() {
+					@Override
+					public void onItemClick(View view, int position) {
+//						Bitmap bitmap = pictureList.get(position).getCompressedImage();
+//						ByteArrayOutputStream bStream = new ByteArrayOutputStream();
+//						bitmap.compress(Bitmap.CompressFormat.PNG, 100, bStream);
+//						byte[] data = bStream.toByteArray();
+//						Intent intent = new Intent().setClass(MainActivity.this ,SecondActivity.class);
+//						intent.putExtra("extra_data", data);
+//						startActivity(intent);
+
+						Message large = new Message();
+						large.what = 3;
+						Object[] data = new Object[2];
+						data[0] = pictureList.get(position).getImage();
+						data[1] = position;
+						large.obj = data;
+						enlarge.sendMessage(large);
+
+					}
+				});
+
 			}
 		}
 	};
-
+	@SuppressLint("HandlerLeak")
+	private final Handler enlarge = new Handler(){
+		@Override
+		public void handleMessage(@NonNull Message msg) {
+			super.handleMessage(msg);
+			if (msg.what == 3){
+				Object[] data = (Object[])msg.obj;
+				Bitmap bitmap = (Bitmap) data[0];
+				largeImage.setImageBitmap(bitmap);
+				largeImage.setTag(data[1]);
+				largeImage.setVisibility(View.VISIBLE);
+				dialog.show();
+			}
+		}
+	};
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -97,10 +163,48 @@ public class MainActivity extends AppCompatActivity {
 //		if(getSupportActionBar() != null){
 //			getSupportActionBar().hide();
 //		}
-		pgb = (ProgressBar)findViewById(R.id.progressbar_top);
-		refreshtext = (TextView) findViewById(R.id.refreshing);
+		pgb_top = (ProgressBar)findViewById(R.id.progressbar_top);
+		pgb_bottom = (ProgressBar)findViewById(R.id.progressbar_bottom);
 		recyclerView = (RecyclerView)findViewById(R.id.recyclerView);
+//		largeImage = (ImageView)findViewById(R.id.largeImageTest);
+
 		initPicture();
+
+//		largeImage = (ImageView)findViewById(R.id.largeImageTest);
+//		builder = new AlertDialog.Builder(MainActivity.this);
+//		builder.setView(largeImage);
+//		builder.setPositiveButton("yes", new DialogInterface.OnClickListener() {
+//			@Override
+//			public void onClick(DialogInterface dialog, int which) {
+//				Toast.makeText(MainActivity.this, "yes", Toast.LENGTH_SHORT).show();
+//			}
+//		});
+//		builder.setNegativeButton("no", new DialogInterface.OnClickListener() {
+//			@Override
+//			public void onClick(DialogInterface dialog, int which) {
+//				Toast.makeText(MainActivity.this,"no", Toast.LENGTH_SHORT).show();
+//			}
+//		});
+//		builder.create();
+//		builder.show();
+
+		dialog = new Dialog(MainActivity.this, R.style.edit_AlertDialog_style);
+		dialog.setContentView(R.layout.activity_main);
+		dialog.setCanceledOnTouchOutside(true);
+		largeImage = (ImageView)dialog.findViewById(R.id.largeImageTest);
+		largeImage.setOnClickListener(new View.OnClickListener() {
+			@Override
+			public void onClick(View v) {
+				dialog.dismiss();
+			}
+		});
+		largeImage.setOnLongClickListener(new View.OnLongClickListener() {
+			@Override
+			public boolean onLongClick(View v) {
+				saveBitmap(pictureList.get((int)largeImage.getTag()).getImage(), pictureList.get((int)largeImage.getTag()).getMessage());
+				return true;
+			}
+		});
 
 		recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
 			@Override
@@ -111,30 +215,29 @@ public class MainActivity extends AppCompatActivity {
 						@Override
 						public void run() {
 							if (!recyclerView.canScrollVertically(1)){
-								pgb.setVisibility(View.VISIBLE);
-								pictureList = new ArrayList<>();
-								initPicture();
+//								pgb_top.setVisibility(View.VISIBLE);
+//								pictureList = new ArrayList<>();
+//								initPicture();
 
+//								Message large = new Message();
+//								large.what = 3;
+//								enlarge.sendMessage(large);
 							}else if(!recyclerView.canScrollVertically(-1)){
-								refreshtext.setVisibility(View.VISIBLE);
-
+//								pgb_bottom.setVisibility(View.VISIBLE);
+//								pictureNum *= 2;
+//								initPicture();
 							}
 						}
 					}, 3000);
-					pgb.setVisibility(View.GONE);
+					pgb_top.setVisibility(View.GONE);
+					pgb_bottom.setVisibility(View.GONE);
 				}
 				Log.d(TAG, "recyclerView.canScrollVertically(bottom) " + recyclerView.canScrollVertically(-1));
 				Log.d(TAG, "recyclerView.canScrollVertically(top) " + recyclerView.canScrollVertically(1));
 			}
 		});
 
-//		ScrollView scr = new ScrollView();
-//		scr.setOnScrollChangeListener(new View.OnScrollChangeListener() {
-//			@Override
-//			public void onScrollChange(View v, int scrollX, int scrollY, int oldScrollX, int oldScrollY) {
-//
-//			}
-//		});
+
 //		RecyclerView recyclerView = (RecyclerView)findViewById(R.id.recyclerView);
 //		LinearLayoutManager linearLayoutManager = new LinearLayoutManager(this);
 //		recyclerView.setLayoutManager(linearLayoutManager);
@@ -142,8 +245,90 @@ public class MainActivity extends AppCompatActivity {
 //		recyclerView.setAdapter(adapter);
 	}
 
+	@Override
+	public boolean onCreateOptionsMenu(Menu menu) {
+		getMenuInflater().inflate(R.menu.main, menu);
+		return true;
+	}
+
+	@Override
+	public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+		switch (item.getItemId()){
+			case R.id.test:
+				img = findViewById(R.id.dog_image);
+				img.setOnClickListener(new View.OnClickListener() {
+					@Override
+					public void onClick(View v) {
+//						Bitmap bitmap = ((BitmapDrawable)img.getDrawable()).getBitmap();
+//						ByteArrayOutputStream bStream = new ByteArrayOutputStream();
+//						bitmap.compress(Bitmap.CompressFormat.PNG, 100, bStream);
+//						byte[] data = bStream.toByteArray();
+//						Intent intent = new Intent().setClass(MainActivity.this ,SecondActivity.class);
+//						intent.putExtra("extra_data", data);
+////						startActivity(intent, ActivityOptions.makeSceneTransitionAnimation(MainActivity.this, img, "sharedView").toBundle());
+//						startActivity(intent);
+
+					}
+				});
+
+				break;
+			default:
+		}
+		return true;
+	}
+
+	private void saveBitmap(Bitmap bitmap, String message)
+	{
+		requestAllPower();//check permission
+		String name = message.substring(message.indexOf("/") + 8, message.indexOf("."));
+		String result = MediaStore.Images.Media.insertImage(getContentResolver(), bitmap, name,message);
+		Toast.makeText(MainActivity.this, "保存成功!", Toast.LENGTH_SHORT).show();
+		Intent scannerIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.parse(result));
+		sendBroadcast(scannerIntent);
+
+//		//创建文件，因为不存在2级目录，所以不用判断exist，要保存png，这里后缀就是png，要保存jpg，后缀就用jpg
+//		String path = "/" + name + ".jpg";
+//		Log.d(TAG, "saveBitmap: " + Environment.getExternalStorageDirectory() + getPackageName());
+////		File dir = new File(Environment.getExternalStorageDirectory() + "/" + getPackageName());
+////		File file = new File(dir, path);
+//		File file = new File( "data/data/com.github.YizheYang" + path);
+//		try {
+//			Log.d(TAG, "exist " + file.exists());
+//			if (!file.exists()){
+//				//file.mkdirs();
+//				file.createNewFile();
+//			}
+//			FileOutputStream fileOutputStream = new FileOutputStream(file);
+//			//压缩图片，如果要保存png，就用Bitmap.CompressFormat.PNG，要保存jpg就用Bitmap.CompressFormat.JPEG,质量是100%，表示不压缩
+//			bitmap.compress(Bitmap.CompressFormat.JPEG, 100, fileOutputStream);
+//			fileOutputStream.flush();
+//			fileOutputStream.close();
+//			Toast.makeText(MainActivity.this, "保存成功!", Toast.LENGTH_SHORT).show();
+//		} catch (IOException e) {
+//			e.printStackTrace();
+//		} finally {
+//			bitmap.recycle();
+//		}
+//		Intent intent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
+//		Uri uri = Uri.fromFile(file);
+//		intent.setData(uri);
+//		getApplicationContext().sendBroadcast(intent);
+	}
+
+	public void requestAllPower() {
+		if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+			//refuse == true
+			if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
+				//toast to explain
+			} else {
+				ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.MOUNT_UNMOUNT_FILESYSTEMS}, 1);
+			}
+		}
+	}
+
+
 	private void initPicture(){
-		for (i = 0;i < pictureNum;i++){
+		for (i = 0 ; i < pictureNum ; i++){
 			sendRequestWitHttpURLConnection();
 		}
 
@@ -190,7 +375,7 @@ public class MainActivity extends AppCompatActivity {
 						Bitmap bitmap = BitmapFactory.decodeStream(in);
 						Object[] obj = new Object[2];
 						obj[0] = bitmap;
-						obj[1] = url.getAuthority();
+						obj[1] = url.getPath();
 						Message pic = new Message();
 						pic.what = 1;
 						pic.obj = obj;
@@ -209,7 +394,6 @@ public class MainActivity extends AppCompatActivity {
 				}
 			}
 		}).start();
-
 	}
 
 //	private void parseJSONWithGSON(String jsonData){
