@@ -9,6 +9,7 @@
         <item name="android:background">@android:color/transparent</item>
         <item name="android:backgroundDimEnabled">true</item>
         <!-- 是否使用背景半透明 -->
-
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:windowFrame">@null</item>
     </style>
 </resources>

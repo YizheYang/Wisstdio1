@@ -4,11 +4,13 @@ import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.app.Dialog;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Rect;
+import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -19,7 +21,10 @@ import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
+import android.view.Window;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.ScrollView;
 import android.widget.Toast;
@@ -58,13 +63,16 @@ public class MainActivity extends AppCompatActivity {
 	private ImageView img;
 	PictureAdapter adapter;
 	public ImageView largeImage;
+	private ImageView largeImage2;
 	Dialog dialog;
 	AlertDialog.Builder builder;
 	private List<Picture> pictureList = new ArrayList<>();
 	private int i;
 	private Picture tempPicture;
-	protected int pictureNum = 3 * 5;
+	protected int pictureNum = 3 * 4;
+	protected int allNum = pictureNum;
 	protected int spanCount = 3;
+	protected boolean isNew = true;
 
 	@SuppressLint("HandlerLeak")
 	private final Handler handler = new Handler() {
@@ -79,8 +87,9 @@ public class MainActivity extends AppCompatActivity {
 				tempPicture = new Picture(message, bitmap);
 				pictureList.add(tempPicture);
 				//pgb.setProgress(pictureList.size());
-				if (pictureList.size() == pictureNum) {
+				if (pictureList.size() == allNum && isNew) {
 					pgb_top.setVisibility(View.GONE);
+					isNew = false;
 					Message re = new Message();
 					re.what = 2;
 					refresh.sendMessage(re);
@@ -88,6 +97,11 @@ public class MainActivity extends AppCompatActivity {
 //					recyclerView.setAdapter(adapter);
 //					GridLayoutManager LayoutManager = new GridLayoutManager(MainActivity.this, 3);
 //					recyclerView.setLayoutManager(LayoutManager);
+				}else if (pictureList.size() == allNum) {
+					pgb_top.setVisibility(View.GONE);
+					Message re = new Message();
+					re.what = 1;
+					refresh.sendMessage(re);
 				}
 			}else{
 				Toast.makeText(MainActivity.this ,"error" ,Toast.LENGTH_SHORT).show();
@@ -100,15 +114,14 @@ public class MainActivity extends AppCompatActivity {
 		@Override
 		public void handleMessage(@NonNull Message msg) {
 			super.handleMessage(msg);
-			if(msg.what == 2){
+			if (msg.what == 1){
+				adapter.notifyDataSetChanged();
+			}else if (msg.what == 2){
 				recyclerView.setLayoutManager(new GridLayoutManager(MainActivity.this, spanCount));
 				adapter = new PictureAdapter(pictureList, MainActivity.this);
 //				adapter.addHeaderView(LayoutInflater.from(MainActivity.this).inflate(R.layout.refresh_top, null));
 				adapter.addFooterView(LayoutInflater.from(MainActivity.this).inflate(R.layout.refresh_bottom, null));
 				recyclerView.setAdapter(adapter);
-//				Rect rect = new Rect();
-//				rect.set(recyclerView.getLeft(),recyclerView.getTop(),recyclerView.getRight(),recyclerView.getBottom());
-//				recyclerView.layout(rect.left, rect.top - adapter.VIEW_HEADER.getMeasuredHeight() - 10, rect.right, rect.bottom + adapter.VIEW_FOOTER.getMeasuredHeight() + 10);
 				adapter.setOnItemClickListener(new PictureAdapter.OnItemClickListener() {
 					@Override
 					public void onItemClick(View view, int position) {
@@ -129,7 +142,6 @@ public class MainActivity extends AppCompatActivity {
 						enlarge.sendMessage(large);
 					}
 				});
-
 			}
 		}
 	};
@@ -141,10 +153,11 @@ public class MainActivity extends AppCompatActivity {
 			if (msg.what == 3){
 				Object[] data = (Object[])msg.obj;
 				Bitmap bitmap = (Bitmap) data[0];
-				largeImage.setImageBitmap(bitmap);
-				largeImage.setTag(data[1]);
-				largeImage.setVisibility(View.VISIBLE);
-				dialog.show();
+				largeImage2.setImageBitmap(bitmap);
+				largeImage2.setTag(data[1]);
+				largeImage2.setVisibility(View.VISIBLE);
+//				dialog.show();
+				builder.show();
 			}
 		}
 	};
@@ -164,52 +177,55 @@ public class MainActivity extends AppCompatActivity {
 //		Layout = (OverScrollLayout) findViewById(R.id.layout);
 		initPicture();
 
-//		largeImage = (ImageView)findViewById(R.id.largeImageTest);
-//		builder = new AlertDialog.Builder(MainActivity.this);
-//		builder.setView(largeImage);
-//		builder.setPositiveButton("yes", new DialogInterface.OnClickListener() {
-//			@Override
-//			public void onClick(DialogInterface dialog, int which) {
-//				Toast.makeText(MainActivity.this, "yes", Toast.LENGTH_SHORT).show();
-//			}
-//		});
-//		builder.setNegativeButton("no", new DialogInterface.OnClickListener() {
-//			@Override
-//			public void onClick(DialogInterface dialog, int which) {
-//				Toast.makeText(MainActivity.this,"no", Toast.LENGTH_SHORT).show();
-//			}
-//		});
-//		builder.create();
-//		builder.show();
 
-		dialog = new Dialog(MainActivity.this, R.style.edit_AlertDialog_style);
-		dialog.setContentView(R.layout.activity_main);
-		dialog.setCanceledOnTouchOutside(true);
-		largeImage = (ImageView)dialog.findViewById(R.id.largeImageTest);
-		largeImage.setOnClickListener(new View.OnClickListener() {
+		View view = LayoutInflater.from(MainActivity.this).inflate(R.layout.large_image, null);
+		LinearLayout linearLayout = (LinearLayout)view.findViewById(R.id.largeImageLayout);
+		largeImage2 = (ImageView)view.findViewById(R.id.largeImage2);
+		builder = new AlertDialog.Builder(MainActivity.this ,R.style.edit_AlertDialog_style).setView(linearLayout);
+
+		builder.setPositiveButton("保存", new DialogInterface.OnClickListener() {
 			@Override
-			public void onClick(View v) {
+			public void onClick(DialogInterface dialog, int which) {
+				saveBitmap(pictureList.get((int)largeImage2.getTag()).getImage(), pictureList.get((int)largeImage2.getTag()).getMessage());
+				((ViewGroup) view.getParent()).removeView(view);
 				dialog.dismiss();
 			}
 		});
-		largeImage.setOnLongClickListener(new View.OnLongClickListener() {
+		builder.setNegativeButton("取消", new DialogInterface.OnClickListener() {
 			@Override
-			public boolean onLongClick(View v) {
-				saveBitmap(pictureList.get((int)largeImage.getTag()).getImage(), pictureList.get((int)largeImage.getTag()).getMessage());
-				return true;
+			public void onClick(DialogInterface dialog, int which) {
+				((ViewGroup) view.getParent()).removeView(view);
+				dialog.dismiss();
 			}
 		});
+		builder.create();
+
+//		dialog = new Dialog(MainActivity.this, R.style.edit_AlertDialog_style);
+//		dialog.setContentView(R.layout.activity_main);
+//		dialog.setCanceledOnTouchOutside(true);
+//		largeImage = (ImageView)dialog.findViewById(R.id.largeImageTest);
+//		largeImage.setOnClickListener(new View.OnClickListener() {
+//			@Override
+//			public void onClick(View v) {
+//				dialog.dismiss();
+//			}
+//		});
+//		largeImage.setOnLongClickListener(new View.OnLongClickListener() {
+//			@Override
+//			public boolean onLongClick(View v) {
+//				saveBitmap(pictureList.get((int)largeImage.getTag()).getImage(), pictureList.get((int)largeImage.getTag()).getMessage());
+//				return true;
+//			}
+//		});
 
 		swipe.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
 			@Override
 			public void onRefresh() {
-				new Handler().postDelayed(new Runnable() {
-					@Override
-					public void run() {
-						Toast.makeText(MainActivity.this, "refresh" , Toast.LENGTH_SHORT).show();
-						swipe.setRefreshing(false);
-					}
-				}, 2000);
+				pgb_top.setVisibility(View.VISIBLE);
+				allNum = pictureNum;
+				pictureList = new ArrayList<>();
+				initPicture();
+				swipe.setRefreshing(false);
 			}
 		});
 
@@ -237,34 +253,16 @@ public class MainActivity extends AppCompatActivity {
 //			}
 //		});
 
-//		recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
-//			@Override
-//			public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
-//				super.onScrollStateChanged(recyclerView, newState);
-////				if (!recyclerView.canScrollVertically(1)){
-////					new Handler().postDelayed(new Runnable() {
-////						@Override
-////						public void run() {
-////							if (!recyclerView.canScrollVertically(1)){
-//////								pgb_top.setVisibility(View.VISIBLE);
-//////								pictureList = new ArrayList<>();
-//////								initPicture();
-////
-//////								Message large = new Message();
-//////								large.what = 3;
-//////								enlarge.sendMessage(large);
-////							}else if(!recyclerView.canScrollVertically(-1)){
-//////								pgb_bottom.setVisibility(View.VISIBLE);
-//////								pictureNum *= 2;
-//////								initPicture();
-////							}
-////						}
-////					}, 3000);
-////				}
-////				Log.d(TAG, "recyclerView.canScrollVertically(bottom) " + recyclerView.canScrollVertically(-1));
-////				Log.d(TAG, "recyclerView.canScrollVertically(top) " + recyclerView.canScrollVertically(1));
-//			}
-//		});
+		recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+			@Override
+			public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
+				super.onScrollStateChanged(recyclerView, newState);
+				if (!recyclerView.canScrollVertically(-1)){
+					allNum += pictureNum;
+					initPicture();
+				}
+			}
+		});
 
 
 //		RecyclerView recyclerView = (RecyclerView)findViewById(R.id.recyclerView);
@@ -383,7 +381,7 @@ public class MainActivity extends AppCompatActivity {
 		while ((line = br.readLine()) != null){
 			res.append(line);
 		}
-		String result = (String)res.toString();
+		String result = res.toString();
 		result = result.substring(result.indexOf("[") + 2 , result.indexOf("]") - 1);//cut
 		return result;
 	}

@@ -87,8 +87,8 @@ public class OverScrollLayout extends LinearLayout {
 					isMoved = true;
 					isSuccess = false;
 					adapter = (PictureAdapter)childView.getAdapter();
-					adapter.VIEW_HEADER.setVisibility(VISIBLE);
-					adapter.VIEW_FOOTER.setVisibility(VISIBLE);
+//					adapter.VIEW_HEADER.setVisibility(VISIBLE);
+//					adapter.VIEW_FOOTER.setVisibility(VISIBLE);
 					return true;
 				} else {
 					startYpos = ev.getY();

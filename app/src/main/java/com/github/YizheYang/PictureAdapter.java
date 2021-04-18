@@ -125,7 +125,7 @@ public class PictureAdapter extends RecyclerView.Adapter<PictureAdapter.ViewHold
 	@Override
 	public void onAttachedToRecyclerView(@NonNull RecyclerView recyclerView) {
 		try {
-			if (mRecyclerView == null && mRecyclerView != recyclerView) {
+			if (mRecyclerView == null) {
 				mRecyclerView = recyclerView;
 			}
 			ifGridLayoutManager();
@@ -146,7 +146,7 @@ public class PictureAdapter extends RecyclerView.Adapter<PictureAdapter.ViewHold
 			ViewGroup.LayoutParams params = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
 			headerView.setLayoutParams(params);
 			VIEW_HEADER = headerView;
-			VIEW_HEADER.setVisibility(View.INVISIBLE);
+//			VIEW_HEADER.setVisibility(View.INVISIBLE);
 			ifGridLayoutManager();
 			notifyItemInserted(0);
 		}
@@ -160,7 +160,7 @@ public class PictureAdapter extends RecyclerView.Adapter<PictureAdapter.ViewHold
 			ViewGroup.LayoutParams params = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
 			footerView.setLayoutParams(params);
 			VIEW_FOOTER = footerView;
-//			VIEW_FOOTER.setVisibility(View.INVISIBLE);
+			VIEW_FOOTER.setVisibility(View.VISIBLE);
 			ifGridLayoutManager();
 			notifyItemInserted(getItemCount() - 1);
 		}
