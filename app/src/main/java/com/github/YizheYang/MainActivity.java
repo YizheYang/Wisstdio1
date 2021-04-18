@@ -1,55 +1,45 @@
 package com.github.YizheYang;
 
+import android.Manifest;
+import android.annotation.SuppressLint;
+import android.app.AlertDialog;
+import android.app.Dialog;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Rect;
+import android.net.Uri;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
+import android.provider.MediaStore;
+import android.util.Log;
+import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuItem;
+import android.view.View;
+import android.widget.ImageView;
+import android.widget.ProgressBar;
+import android.widget.ScrollView;
+import android.widget.Toast;
+
+import androidx.annotation.MainThread;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-
-
-import android.Manifest;
-import android.annotation.SuppressLint;
-import android.app.ActivityOptions;
-import android.app.AlertDialog;
-import android.app.Dialog;
-import android.content.DialogInterface;
-import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.graphics.drawable.BitmapDrawable;
-import android.net.Uri;
-import android.os.Bundle;
-import android.os.Environment;
-import android.os.Handler;
-import android.os.Message;
-import android.provider.MediaStore;
-import android.util.Log;
-import android.view.Menu;
-import android.view.MenuItem;
-import android.view.View;
-import android.view.Window;
-import android.view.WindowManager;
-import android.widget.ImageView;
-import android.widget.ProgressBar;
-import android.widget.ScrollView;
-import android.widget.Toast;
-
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import java.io.BufferedReader;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
-import java.net.URI;
 import java.net.URL;
-import java.security.Permission;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.List;
 
 import static java.lang.Thread.sleep;
@@ -59,7 +49,9 @@ public class MainActivity extends AppCompatActivity {
 
 	private static final String TAG = "MainActivity" ;
 	private String path = "http://shibe.online/api/shibes?count=1&urls=true&httpsUrls=true";
+	private SwipeRefreshLayout swipe;
 	private RecyclerView recyclerView;
+//	private OverScrollLayout Layout;
 	private ProgressBar pgb_top;
 	private ProgressBar pgb_bottom;
 	private ScrollView scrollView;
@@ -71,10 +63,8 @@ public class MainActivity extends AppCompatActivity {
 	private List<Picture> pictureList = new ArrayList<>();
 	private int i;
 	private Picture tempPicture;
-	protected int pictureNum = 3;
-
-//	final LayoutInflater inflater = LayoutInflater.from(this);
-//	final LinearLayout lin = (LinearLayout) findViewById(R.id.picture_layout);
+	protected int pictureNum = 3 * 5;
+	protected int spanCount = 3;
 
 	@SuppressLint("HandlerLeak")
 	private final Handler handler = new Handler() {
@@ -111,10 +101,14 @@ public class MainActivity extends AppCompatActivity {
 		public void handleMessage(@NonNull Message msg) {
 			super.handleMessage(msg);
 			if(msg.what == 2){
-				adapter = new PictureAdapter(pictureList);
+				recyclerView.setLayoutManager(new GridLayoutManager(MainActivity.this, spanCount));
+				adapter = new PictureAdapter(pictureList, MainActivity.this);
+//				adapter.addHeaderView(LayoutInflater.from(MainActivity.this).inflate(R.layout.refresh_top, null));
+				adapter.addFooterView(LayoutInflater.from(MainActivity.this).inflate(R.layout.refresh_bottom, null));
 				recyclerView.setAdapter(adapter);
-				GridLayoutManager LayoutManager = new GridLayoutManager(MainActivity.this, 3);
-				recyclerView.setLayoutManager(LayoutManager);
+//				Rect rect = new Rect();
+//				rect.set(recyclerView.getLeft(),recyclerView.getTop(),recyclerView.getRight(),recyclerView.getBottom());
+//				recyclerView.layout(rect.left, rect.top - adapter.VIEW_HEADER.getMeasuredHeight() - 10, rect.right, rect.bottom + adapter.VIEW_FOOTER.getMeasuredHeight() + 10);
 				adapter.setOnItemClickListener(new PictureAdapter.OnItemClickListener() {
 					@Override
 					public void onItemClick(View view, int position) {
@@ -133,7 +127,6 @@ public class MainActivity extends AppCompatActivity {
 						data[1] = position;
 						large.obj = data;
 						enlarge.sendMessage(large);
-
 					}
 				});
 
@@ -165,9 +158,10 @@ public class MainActivity extends AppCompatActivity {
 //		}
 		pgb_top = (ProgressBar)findViewById(R.id.progressbar_top);
 		pgb_bottom = (ProgressBar)findViewById(R.id.progressbar_bottom);
-		recyclerView = (RecyclerView)findViewById(R.id.recyclerView);
+		recyclerView = (RecyclerView) findViewById(R.id.recyclerView);
+		swipe = (SwipeRefreshLayout)findViewById(R.id.swipe);
 //		largeImage = (ImageView)findViewById(R.id.largeImageTest);
-
+//		Layout = (OverScrollLayout) findViewById(R.id.layout);
 		initPicture();
 
 //		largeImage = (ImageView)findViewById(R.id.largeImageTest);
@@ -206,36 +200,71 @@ public class MainActivity extends AppCompatActivity {
 			}
 		});
 
-		recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+		swipe.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
 			@Override
-			public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
-				super.onScrollStateChanged(recyclerView, newState);
-				if (!recyclerView.canScrollVertically(1)){
-					new Handler().postDelayed(new Runnable() {
-						@Override
-						public void run() {
-							if (!recyclerView.canScrollVertically(1)){
-//								pgb_top.setVisibility(View.VISIBLE);
-//								pictureList = new ArrayList<>();
-//								initPicture();
-
-//								Message large = new Message();
-//								large.what = 3;
-//								enlarge.sendMessage(large);
-							}else if(!recyclerView.canScrollVertically(-1)){
-//								pgb_bottom.setVisibility(View.VISIBLE);
-//								pictureNum *= 2;
-//								initPicture();
-							}
-						}
-					}, 3000);
-					pgb_top.setVisibility(View.GONE);
-					pgb_bottom.setVisibility(View.GONE);
-				}
-				Log.d(TAG, "recyclerView.canScrollVertically(bottom) " + recyclerView.canScrollVertically(-1));
-				Log.d(TAG, "recyclerView.canScrollVertically(top) " + recyclerView.canScrollVertically(1));
+			public void onRefresh() {
+				new Handler().postDelayed(new Runnable() {
+					@Override
+					public void run() {
+						Toast.makeText(MainActivity.this, "refresh" , Toast.LENGTH_SHORT).show();
+						swipe.setRefreshing(false);
+					}
+				}, 2000);
 			}
 		});
+
+//		Layout.setScrollListener(new OverScrollLayout.ScrollListener() {
+//			@Override
+//			public void onScroll() {
+//				if (adapter.VIEW_HEADER.getVisibility() == View.VISIBLE) {
+//					Toast.makeText(MainActivity.this, "top", Toast.LENGTH_SHORT).show();
+//					new Handler().postDelayed(new Runnable() {
+//						@Override
+//						public void run() {
+//							adapter.VIEW_HEADER.setVisibility(View.INVISIBLE);
+//						}
+//					},2000);
+//				}else if (adapter.VIEW_FOOTER.getVisibility() == View.VISIBLE) {
+//					Toast.makeText(MainActivity.this, "bottom", Toast.LENGTH_SHORT).show();
+//					new Handler().postDelayed(new Runnable() {
+//						@Override
+//						public void run() {
+//							adapter.VIEW_FOOTER.setVisibility(View.INVISIBLE);
+//						}
+//					},2000);
+//
+//				}
+//			}
+//		});
+
+//		recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+//			@Override
+//			public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
+//				super.onScrollStateChanged(recyclerView, newState);
+////				if (!recyclerView.canScrollVertically(1)){
+////					new Handler().postDelayed(new Runnable() {
+////						@Override
+////						public void run() {
+////							if (!recyclerView.canScrollVertically(1)){
+//////								pgb_top.setVisibility(View.VISIBLE);
+//////								pictureList = new ArrayList<>();
+//////								initPicture();
+////
+//////								Message large = new Message();
+//////								large.what = 3;
+//////								enlarge.sendMessage(large);
+////							}else if(!recyclerView.canScrollVertically(-1)){
+//////								pgb_bottom.setVisibility(View.VISIBLE);
+//////								pictureNum *= 2;
+//////								initPicture();
+////							}
+////						}
+////					}, 3000);
+////				}
+////				Log.d(TAG, "recyclerView.canScrollVertically(bottom) " + recyclerView.canScrollVertically(-1));
+////				Log.d(TAG, "recyclerView.canScrollVertically(top) " + recyclerView.canScrollVertically(1));
+//			}
+//		});
 
 
 //		RecyclerView recyclerView = (RecyclerView)findViewById(R.id.recyclerView);
