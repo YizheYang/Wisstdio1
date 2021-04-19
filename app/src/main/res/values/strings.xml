@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">Examination1</string>
     <string name="refreshing">正在刷新中……</string>
+    <string name="local_display">当前无网络，已显示本地内容</string>
 </resources>

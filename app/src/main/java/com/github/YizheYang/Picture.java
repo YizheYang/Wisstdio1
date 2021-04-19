@@ -2,8 +2,10 @@ package com.github.YizheYang;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Matrix;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -34,7 +36,26 @@ public class Picture {
 	}
 
 	public Bitmap getCompressedImage(){
-		return Bitmap.createScaledBitmap(image, 130, 130,true);
+		ByteArrayOutputStream bStream = new ByteArrayOutputStream();
+		image.compress(Bitmap.CompressFormat.PNG, 100, bStream);
+		byte[] data = bStream.toByteArray();
+		BitmapFactory.Options options = new BitmapFactory.Options();
+		options.inPreferredConfig = Bitmap.Config.RGB_565;
+		options.inJustDecodeBounds = true;
+		int temp = Math.max(image.getHeight(), image.getWidth());
+		int scale = (temp / 130);
+		if ((temp / 130) * 130 < temp) {
+			scale = (temp / 130) + 1;
+		}
+		options.inSampleSize = scale;
+		options.inJustDecodeBounds = false;
+		return BitmapFactory.decodeByteArray(data,0, data.length, options);
+
+//		Matrix matrix = new Matrix();
+//		matrix.setScale(0.5f, 0.5f);
+//		return Bitmap.createBitmap(image, 0, 0, image.getWidth(), image.getHeight(), matrix, true);
+
+//		return Bitmap.createScaledBitmap(image, 130, 130,true);
 	}
 
 	public String getMessage(){

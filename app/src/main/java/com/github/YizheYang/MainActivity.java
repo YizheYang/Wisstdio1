@@ -4,15 +4,20 @@ import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.app.Dialog;
+import android.content.ContentValues;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.Rect;
-import android.graphics.drawable.ColorDrawable;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
 import android.provider.MediaStore;
@@ -22,14 +27,12 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.Window;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.ScrollView;
 import android.widget.Toast;
 
-import androidx.annotation.MainThread;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
@@ -69,8 +72,10 @@ public class MainActivity extends AppCompatActivity {
 	private List<Picture> pictureList = new ArrayList<>();
 	private int i;
 	private Picture tempPicture;
-	protected int pictureNum = 3 * 4;
-	protected int allNum = pictureNum;
+	private MySQLiteOpenHelper myHelper;
+	protected int firstNum = 3 * 4;
+	protected int moreNum = 3 * 2;
+	protected int allNum = firstNum;
 	protected int spanCount = 3;
 	protected boolean isNew = true;
 
@@ -87,7 +92,7 @@ public class MainActivity extends AppCompatActivity {
 				tempPicture = new Picture(message, bitmap);
 				pictureList.add(tempPicture);
 				//pgb.setProgress(pictureList.size());
-				if (pictureList.size() == allNum && isNew) {
+				if (((pictureList.size() == allNum) && isNew) || !isConnect()) {
 					pgb_top.setVisibility(View.GONE);
 					isNew = false;
 					Message re = new Message();
@@ -104,7 +109,7 @@ public class MainActivity extends AppCompatActivity {
 					refresh.sendMessage(re);
 				}
 			}else{
-				Toast.makeText(MainActivity.this ,"error" ,Toast.LENGTH_SHORT).show();
+				Toast.makeText(MainActivity.this ,"ERROR" ,Toast.LENGTH_SHORT).show();
 			}
 		}
 	};
@@ -115,12 +120,17 @@ public class MainActivity extends AppCompatActivity {
 		public void handleMessage(@NonNull Message msg) {
 			super.handleMessage(msg);
 			if (msg.what == 1){
+//				recyclerView.layout(recyclerView.getLeft(), recyclerView.getTop(), recyclerView.getRight(), recyclerView.getBottom() + adapter.VIEW_FOOTER.getMeasuredHeight());
 				adapter.notifyDataSetChanged();
 			}else if (msg.what == 2){
 				recyclerView.setLayoutManager(new GridLayoutManager(MainActivity.this, spanCount));
 				adapter = new PictureAdapter(pictureList, MainActivity.this);
 //				adapter.addHeaderView(LayoutInflater.from(MainActivity.this).inflate(R.layout.refresh_top, null));
-				adapter.addFooterView(LayoutInflater.from(MainActivity.this).inflate(R.layout.refresh_bottom, null));
+				if (isConnect()) {
+					adapter.addFooterView(LayoutInflater.from(MainActivity.this).inflate(R.layout.refresh_bottom, null));
+				}else {
+					adapter.addFooterView(LayoutInflater.from(MainActivity.this).inflate(R.layout.local_display, null));
+				}
 				recyclerView.setAdapter(adapter);
 				adapter.setOnItemClickListener(new PictureAdapter.OnItemClickListener() {
 					@Override
@@ -175,6 +185,8 @@ public class MainActivity extends AppCompatActivity {
 		swipe = (SwipeRefreshLayout)findViewById(R.id.swipe);
 //		largeImage = (ImageView)findViewById(R.id.largeImageTest);
 //		Layout = (OverScrollLayout) findViewById(R.id.layout);
+		myHelper = new MySQLiteOpenHelper(MainActivity.this, "Image.db", null, 1);
+		myHelper.getWritableDatabase();
 		initPicture();
 
 
@@ -182,7 +194,6 @@ public class MainActivity extends AppCompatActivity {
 		LinearLayout linearLayout = (LinearLayout)view.findViewById(R.id.largeImageLayout);
 		largeImage2 = (ImageView)view.findViewById(R.id.largeImage2);
 		builder = new AlertDialog.Builder(MainActivity.this ,R.style.edit_AlertDialog_style).setView(linearLayout);
-
 		builder.setPositiveButton("保存", new DialogInterface.OnClickListener() {
 			@Override
 			public void onClick(DialogInterface dialog, int which) {
@@ -222,8 +233,10 @@ public class MainActivity extends AppCompatActivity {
 			@Override
 			public void onRefresh() {
 				pgb_top.setVisibility(View.VISIBLE);
-				allNum = pictureNum;
-				pictureList = new ArrayList<>();
+				allNum = firstNum;
+				pictureList.clear();
+				adapter.notifyDataSetChanged();
+				isNew = true;
 				initPicture();
 				swipe.setRefreshing(false);
 			}
@@ -258,18 +271,14 @@ public class MainActivity extends AppCompatActivity {
 			public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
 				super.onScrollStateChanged(recyclerView, newState);
 				if (!recyclerView.canScrollVertically(-1)){
-					allNum += pictureNum;
-					initPicture();
+					if (isConnect()) {
+						allNum += moreNum;
+						initPicture();
+					}
 				}
 			}
 		});
 
-
-//		RecyclerView recyclerView = (RecyclerView)findViewById(R.id.recyclerView);
-//		LinearLayoutManager linearLayoutManager = new LinearLayoutManager(this);
-//		recyclerView.setLayoutManager(linearLayoutManager);
-//		PictureAdapter adapter = new PictureAdapter(pictureList);
-//		recyclerView.setAdapter(adapter);
 	}
 
 	@Override
@@ -282,37 +291,44 @@ public class MainActivity extends AppCompatActivity {
 	public boolean onOptionsItemSelected(@NonNull MenuItem item) {
 		switch (item.getItemId()){
 			case R.id.test:
-				img = findViewById(R.id.dog_image);
-				img.setOnClickListener(new View.OnClickListener() {
-					@Override
-					public void onClick(View v) {
-//						Bitmap bitmap = ((BitmapDrawable)img.getDrawable()).getBitmap();
-//						ByteArrayOutputStream bStream = new ByteArrayOutputStream();
-//						bitmap.compress(Bitmap.CompressFormat.PNG, 100, bStream);
-//						byte[] data = bStream.toByteArray();
-//						Intent intent = new Intent().setClass(MainActivity.this ,SecondActivity.class);
-//						intent.putExtra("extra_data", data);
-////						startActivity(intent, ActivityOptions.makeSceneTransitionAnimation(MainActivity.this, img, "sharedView").toBundle());
-//						startActivity(intent);
-
-					}
-				});
-
+				Toast.makeText(MainActivity.this,"text", Toast.LENGTH_SHORT).show();
+//				img = findViewById(R.id.dog_image);
+//				img.setOnClickListener(new View.OnClickListener() {
+//					@Override
+//					public void onClick(View v) {
+////						Bitmap bitmap = ((BitmapDrawable)img.getDrawable()).getBitmap();
+////						ByteArrayOutputStream bStream = new ByteArrayOutputStream();
+////						bitmap.compress(Bitmap.CompressFormat.PNG, 100, bStream);
+////						byte[] data = bStream.toByteArray();
+////						Intent intent = new Intent().setClass(MainActivity.this ,SecondActivity.class);
+////						intent.putExtra("extra_data", data);
+//////						startActivity(intent, ActivityOptions.makeSceneTransitionAnimation(MainActivity.this, img, "sharedView").toBundle());
+////						startActivity(intent);
+//
+//					}
+//				});
 				break;
 			default:
 		}
 		return true;
 	}
 
-	private void saveBitmap(Bitmap bitmap, String message)
-	{
+	private void saveBitmap(Bitmap bitmap, String message) {
 		requestAllPower();//check permission
 		String name = message.substring(message.indexOf("/") + 8, message.indexOf("."));
-		String result = MediaStore.Images.Media.insertImage(getContentResolver(), bitmap, name,message);
-		Toast.makeText(MainActivity.this, "保存成功!", Toast.LENGTH_SHORT).show();
+		String result = MediaStore.Images.Media.insertImage(getContentResolver(), bitmap, name, message);
+		Log.d(TAG, "saveBitmap: " + name);
+		Log.d(TAG, "environment: " + Environment.getExternalStorageDirectory());
 		Intent scannerIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.parse(result));
 		sendBroadcast(scannerIntent);
-
+		Toast.makeText(MainActivity.this, "保存成功!", Toast.LENGTH_SHORT).show();
+		SQLiteDatabase db = myHelper.getWritableDatabase();
+		ContentValues values = new ContentValues();
+		values.put("MESSAGE", message);
+		values.put("LOCATION", Environment.getExternalStorageDirectory() + "/Pictures/" + name + ".jpg");
+		values.put("URL", "https://cdn.shibe.online/shibes/" + name + ".jpg");
+		db.insert("SavedImage",null,values);
+		db.close();
 //		//创建文件，因为不存在2级目录，所以不用判断exist，要保存png，这里后缀就是png，要保存jpg，后缀就用jpg
 //		String path = "/" + name + ".jpg";
 //		Log.d(TAG, "saveBitmap: " + Environment.getExternalStorageDirectory() + getPackageName());
@@ -353,19 +369,52 @@ public class MainActivity extends AppCompatActivity {
 		}
 	}
 
-
-	private void initPicture(){
-		for (i = 0 ; i < pictureNum ; i++){
-			sendRequestWitHttpURLConnection();
+	private boolean isConnect() {
+		ConnectivityManager connectivityManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+		NetworkInfo networkInfo = connectivityManager.getActiveNetworkInfo();
+		if (networkInfo != null && networkInfo.isAvailable()) {
+			return true;
+		} else {
+			return false;
 		}
+	}
 
-//		for (i = 0;i < 10;i++){
-//			//tempPicture.run();
-//			Picture temp = new Picture("0" ,null);
-//			tempPicture = temp.initPicture();
-//
-//			pictureList.add(tempPicture);
-//		}
+	private void initPicture() {
+		if (isConnect()) {
+			for (i = 0 ; i < firstNum; i++){
+				sendRequestWitHttpURLConnection();
+			}
+		}else {
+			new Thread(new Runnable() {
+				@Override
+				public void run() {
+					SQLiteDatabase db = myHelper.getWritableDatabase();
+					Cursor cursor = db.query("SavedImage", null, null, null, null, null, null);
+					if (cursor.moveToFirst()) {
+						do {
+							String message = cursor.getString(cursor.getColumnIndex("MESSAGE"));
+							String location = cursor.getString(cursor.getColumnIndex("LOCATION"));
+							Log.d(TAG, "message: " + message);
+							Log.d(TAG, "location " + location);
+							Bitmap bitmap = BitmapFactory.decodeFile(location);
+							Log.d(TAG, "bitmap: " + bitmap.getHeight());
+							Object[] obj = new Object[2];
+							obj[0] = bitmap;
+							obj[1] = message;
+							Message pic = new Message();
+							pic.what = 1;
+							pic.obj = obj;
+							handler.sendMessage(pic);
+						} while (cursor.moveToNext());
+					}else {
+						Message pic = new Message();
+						pic.what = 0;
+						handler.sendMessage(pic);
+					}
+					cursor.close();
+				}
+			}).start();
+		}
 	}
 
 	private String getExactUrl(String url) throws IOException {
@@ -378,11 +427,13 @@ public class MainActivity extends AppCompatActivity {
 		BufferedReader br = new BufferedReader(new InputStreamReader(in));
 		StringBuilder res = new StringBuilder();
 		String line;
-		while ((line = br.readLine()) != null){
+		while ((line = br.readLine()) != null) {
 			res.append(line);
 		}
 		String result = res.toString();
-		result = result.substring(result.indexOf("[") + 2 , result.indexOf("]") - 1);//cut
+		result = result.substring(result.indexOf("[") + 2, result.indexOf("]") - 1);//cut
+		in.close();
+		br.close();
 		return result;
 	}
 
@@ -391,12 +442,11 @@ public class MainActivity extends AppCompatActivity {
 			@Override
 			public void run() {
 				try {
-					Log.d(TAG, "run: " + Thread.currentThread().getId());
 					URL url = new URL(getExactUrl(path));
 					HttpURLConnection connection = (HttpURLConnection) url.openConnection();
 					connection.setRequestMethod("GET");
-					connection.setConnectTimeout(5 * 1000);
-					connection.setReadTimeout(8 * 1000);
+					connection.setConnectTimeout(50 * 1000);
+					connection.setReadTimeout(80 * 1000);
 					if (connection.getResponseCode() == 200){
 						InputStream in = connection.getInputStream();
 						Bitmap bitmap = BitmapFactory.decodeStream(in);
@@ -407,13 +457,13 @@ public class MainActivity extends AppCompatActivity {
 						pic.what = 1;
 						pic.obj = obj;
 						handler.sendMessage(pic);
+						in.close();
 //						Log.d(TAG, "run: " + url.getPath());
 //						Log.d(TAG, "run: " + bitmap);
-					}
-					else{
-						Message message = new Message();
-						message.what = 0;
-						handler.sendMessage(message);
+					} else{
+						Message pic = new Message();
+						pic.what = 0;
+						handler.sendMessage(pic);
 					}
 					sleep(1000);
 				} catch (Exception e) {
@@ -422,17 +472,5 @@ public class MainActivity extends AppCompatActivity {
 			}
 		}).start();
 	}
-
-//	private void parseJSONWithGSON(String jsonData){
-//		Gson gson = new Gson();
-//		List<Picture> pictureList = gson.fromJson(jsonData ,new TypeToken<List<Picture>>(){}.getType());
-//		for (Picture picture : pictureList){
-//			Message message = new Message();
-//			message.what = 1;
-//			message.obj = picture;
-//			handler.sendMessage(message);
-//		}
-//
-//	}
 
 }
