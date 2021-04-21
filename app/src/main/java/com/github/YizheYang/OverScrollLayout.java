@@ -124,7 +124,7 @@ public class OverScrollLayout extends LinearLayout {
 		anim.setDuration(ANIM_TIME);
 		childView.startAnimation(anim);
 		adapter = (PictureAdapter)childView.getAdapter();
-		childView.layout(original.left, original.top - adapter.VIEW_HEADER.getMeasuredHeight(), original.right, original.bottom + adapter.VIEW_FOOTER.getMeasuredHeight());
+		childView.layout(original.left, original.top, original.right, original.bottom + adapter.VIEW_FOOTER.getMeasuredHeight());
 		isMoved = false;
 	}
 
@@ -133,7 +133,7 @@ public class OverScrollLayout extends LinearLayout {
 	 *
 	 * @return true：可以，false:不可以
 	 */
-	private boolean canPullDown() {
+	public boolean canPullDown() {
 		final int firstVisiblePosition = ((LinearLayoutManager) childView.getLayoutManager()).findFirstVisibleItemPosition();
 		if (firstVisiblePosition != 0 && childView.getAdapter().getItemCount() != 0) {
 			return false;
@@ -147,7 +147,7 @@ public class OverScrollLayout extends LinearLayout {
 	 *
 	 * @return true：可以，false:不可以
 	 */
-	private boolean canPullUp() {
+	public boolean canPullUp() {
 		final int lastItemPosition = childView.getAdapter().getItemCount() - 1;
 		final int lastVisiblePosition = ((LinearLayoutManager) childView.getLayoutManager()).findLastVisibleItemPosition();
 		if (lastVisiblePosition >= lastItemPosition) {

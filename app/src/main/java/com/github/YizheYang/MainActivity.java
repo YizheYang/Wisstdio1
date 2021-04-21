@@ -13,6 +13,7 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.drawable.BitmapDrawable;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
@@ -59,7 +60,7 @@ public class MainActivity extends AppCompatActivity {
 	private String path = "http://shibe.online/api/shibes?count=1&urls=true&httpsUrls=true";
 	private SwipeRefreshLayout swipe;
 	private RecyclerView recyclerView;
-//	private OverScrollLayout Layout;
+	private OverScrollLayout Layout;
 	private ProgressBar pgb_top;
 	private ProgressBar pgb_bottom;
 	private ScrollView scrollView;
@@ -70,13 +71,14 @@ public class MainActivity extends AppCompatActivity {
 	Dialog dialog;
 	AlertDialog.Builder builder;
 	private List<Picture> pictureList = new ArrayList<>();
+	private List<Picture> blankList = new ArrayList<>();
 	private int i;
 	private Picture tempPicture;
 	private MySQLiteOpenHelper myHelper;
-	protected int firstNum = 3 * 4;
-	protected int moreNum = 3 * 2;
-	protected int allNum = firstNum;
 	protected int spanCount = 3;
+	protected int firstNum = spanCount * 5;
+	protected int moreNum = spanCount * 2;
+	protected int allNum = firstNum;
 	protected boolean isNew = true;
 
 	@SuppressLint("HandlerLeak")
@@ -122,12 +124,15 @@ public class MainActivity extends AppCompatActivity {
 			if (msg.what == 1){
 //				recyclerView.layout(recyclerView.getLeft(), recyclerView.getTop(), recyclerView.getRight(), recyclerView.getBottom() + adapter.VIEW_FOOTER.getMeasuredHeight());
 				adapter.notifyDataSetChanged();
+				Toast.makeText(MainActivity.this,"刷新成功",Toast.LENGTH_SHORT).show();
+				recyclerView.setNestedScrollingEnabled(true);
 			}else if (msg.what == 2){
 				recyclerView.setLayoutManager(new GridLayoutManager(MainActivity.this, spanCount));
 				adapter = new PictureAdapter(pictureList, MainActivity.this);
 //				adapter.addHeaderView(LayoutInflater.from(MainActivity.this).inflate(R.layout.refresh_top, null));
 				if (isConnect()) {
 					adapter.addFooterView(LayoutInflater.from(MainActivity.this).inflate(R.layout.refresh_bottom, null));
+					Toast.makeText(MainActivity.this,"获取到" + firstNum + "张图片",Toast.LENGTH_SHORT).show();
 				}else {
 					adapter.addFooterView(LayoutInflater.from(MainActivity.this).inflate(R.layout.local_display, null));
 				}
@@ -172,6 +177,24 @@ public class MainActivity extends AppCompatActivity {
 		}
 	};
 
+	@SuppressLint("HandlerLeak")
+	private final Handler blank = new Handler(){
+		@Override
+		public void handleMessage(@NonNull Message msg) {
+			super.handleMessage(msg);
+			if (msg.what == 4) {
+				Bitmap bitmap = BitmapFactory.decodeResource(getResources(), R.drawable.test);
+				for (i = 0 ; i < allNum ; i++) {
+					tempPicture = new Picture("0", bitmap);
+					blankList.add(tempPicture);
+				}
+				recyclerView.setLayoutManager(new GridLayoutManager(MainActivity.this, spanCount));
+				PictureAdapter blankAdapter = new PictureAdapter(blankList, MainActivity.this);
+				recyclerView.setAdapter(blankAdapter);
+			}
+		}
+	};
+
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -184,7 +207,7 @@ public class MainActivity extends AppCompatActivity {
 		recyclerView = (RecyclerView) findViewById(R.id.recyclerView);
 		swipe = (SwipeRefreshLayout)findViewById(R.id.swipe);
 //		largeImage = (ImageView)findViewById(R.id.largeImageTest);
-//		Layout = (OverScrollLayout) findViewById(R.id.layout);
+		Layout = (OverScrollLayout) findViewById(R.id.layout);
 		myHelper = new MySQLiteOpenHelper(MainActivity.this, "Image.db", null, 1);
 		myHelper.getWritableDatabase();
 		initPicture();
@@ -242,29 +265,19 @@ public class MainActivity extends AppCompatActivity {
 			}
 		});
 
-//		Layout.setScrollListener(new OverScrollLayout.ScrollListener() {
-//			@Override
-//			public void onScroll() {
-//				if (adapter.VIEW_HEADER.getVisibility() == View.VISIBLE) {
-//					Toast.makeText(MainActivity.this, "top", Toast.LENGTH_SHORT).show();
-//					new Handler().postDelayed(new Runnable() {
-//						@Override
-//						public void run() {
-//							adapter.VIEW_HEADER.setVisibility(View.INVISIBLE);
-//						}
-//					},2000);
-//				}else if (adapter.VIEW_FOOTER.getVisibility() == View.VISIBLE) {
-//					Toast.makeText(MainActivity.this, "bottom", Toast.LENGTH_SHORT).show();
-//					new Handler().postDelayed(new Runnable() {
-//						@Override
-//						public void run() {
-//							adapter.VIEW_FOOTER.setVisibility(View.INVISIBLE);
-//						}
-//					},2000);
-//
-//				}
-//			}
-//		});
+		Layout.setScrollListener(new OverScrollLayout.ScrollListener() {
+			@Override
+			public void onScroll() {
+				if (!Layout.canPullUp()) {
+//					if (isConnect()) {
+//						allNum += moreNum;
+//						recyclerView.setNestedScrollingEnabled(false);
+//						Toast.makeText(MainActivity.this,"正在刷新中，请不要滑动...",Toast.LENGTH_LONG).show();
+//						initPicture();
+//					}
+				}
+			}
+		});
 
 		recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
 			@Override
@@ -273,12 +286,16 @@ public class MainActivity extends AppCompatActivity {
 				if (!recyclerView.canScrollVertically(-1)){
 					if (isConnect()) {
 						allNum += moreNum;
+						recyclerView.setNestedScrollingEnabled(false);
+						Toast.makeText(MainActivity.this,"正在刷新中，请不要滑动...",Toast.LENGTH_LONG).show();
+//						Message message = new Message();
+//						message.what = 4;
+//						blank.sendMessage(message);
 						initPicture();
 					}
 				}
 			}
 		});
-
 	}
 
 	@Override
@@ -380,14 +397,21 @@ public class MainActivity extends AppCompatActivity {
 	}
 
 	private void initPicture() {
-		if (isConnect()) {
-			for (i = 0 ; i < firstNum; i++){
-				sendRequestWitHttpURLConnection();
-			}
-		}else {
-			new Thread(new Runnable() {
-				@Override
-				public void run() {
+		new Thread(new Runnable() {
+			@Override
+			public void run() {
+				if (isConnect()) {
+					if (isNew) {
+						for (i = 0 ; i < firstNum; i++){
+							sendRequestWitHttpURLConnection();
+						}
+					}else {
+						for (i = 0 ; i < moreNum; i++){
+							sendRequestWitHttpURLConnection();
+						}
+					}
+
+				}else {
 					SQLiteDatabase db = myHelper.getWritableDatabase();
 					Cursor cursor = db.query("SavedImage", null, null, null, null, null, null);
 					if (cursor.moveToFirst()) {
@@ -413,16 +437,16 @@ public class MainActivity extends AppCompatActivity {
 					}
 					cursor.close();
 				}
-			}).start();
-		}
+			}
+		}).start();
 	}
 
 	private String getExactUrl(String url) throws IOException {
 		URL u = new URL(url);
 		HttpURLConnection con = (HttpURLConnection) u.openConnection();
 		con.setRequestMethod("GET");
-		con.setConnectTimeout(5 * 1000);
-		con.setReadTimeout(8 * 1000);
+		con.setConnectTimeout(50 * 1000);
+		con.setReadTimeout(80 * 1000);
 		InputStream in = con.getInputStream();
 		BufferedReader br = new BufferedReader(new InputStreamReader(in));
 		StringBuilder res = new StringBuilder();
