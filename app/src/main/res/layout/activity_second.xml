@@ -5,11 +5,15 @@
     android:layout_height="match_parent"
     android:orientation="vertical">
 
-    <ImageView
+    <ProgressBar
+        android:id="@+id/progressbar_top2"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:id="@+id/largeImage"
-        android:src="@android:mipmap/sym_def_app_icon"
-        android:transitionName="sharedView" />
+        android:layout_height="wrap_content"/>
 
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerView2"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginTop="10dp"
+        android:layout_marginBottom="10dp" />
 </LinearLayout>

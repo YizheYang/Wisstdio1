@@ -1,3 +1,6 @@
+/*
+ * Copyright <2021> WISStudio Inc.
+ */
 package com.github.YizheYang;
 
 import android.content.Context;
@@ -13,18 +16,21 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import java.util.List;
 
-public class PictureAdapter extends RecyclerView.Adapter<PictureAdapter.ViewHolder> {
+/**
+ * 自定义的适配器类，用于将数据放进组件里
+ * @author 一只羊
+ */
+public class ImageAdapter extends RecyclerView.Adapter<ImageAdapter.ViewHolder> {
 
-	private final List<Picture> mPictureList;
-	private OnItemClickListener mOnItemClickListener;
-
-	private RecyclerView mRecyclerView;
-	private Context mContext;
-	View VIEW_HEADER;
-	View VIEW_FOOTER;
+	public View VIEW_HEADER;
+	public View VIEW_FOOTER;
+	private final List<Image> mImageList;
 	private final int TYPE_NORMAL = 1000;
 	private final int TYPE_HEADER = 1001;
 	private final int TYPE_FOOTER = 1002;
+	private OnItemClickListener mOnItemClickListener;
+	private RecyclerView mRecyclerView;
+	private final Context mContext;
 
 	static class ViewHolder extends RecyclerView.ViewHolder{
 		TextView text;
@@ -32,13 +38,13 @@ public class PictureAdapter extends RecyclerView.Adapter<PictureAdapter.ViewHold
 
 		public ViewHolder(View view){
 			super(view);
-			text = (TextView)view.findViewById(R.id.dog_path);
-			image = (ImageView)view.findViewById(R.id.dog_image);
+			text = view.findViewById(R.id.dog_path);
+			image = view.findViewById(R.id.dog_image);
 		}
 	}
 
-	public PictureAdapter(List<Picture> PictureList ,Context context) {
-		this.mPictureList = PictureList;
+	public ImageAdapter(List<Image> imageList, Context context) {
+		this.mImageList = imageList;
 		this.mContext = context;
 	}
 
@@ -53,30 +59,18 @@ public class PictureAdapter extends RecyclerView.Adapter<PictureAdapter.ViewHold
 			View view = LayoutInflater.from(mContext).inflate(R.layout.picture_item, parent, false);
 			return new ViewHolder(view);
 		}
-//		View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.picture_item, parent, false);
-//		return new ViewHolder(view);
 	}
 
 	@Override
 	public void onBindViewHolder(ViewHolder holder, int position) {
-//		Picture picture = mPictureList.get(position);
-//		holder.image.setImageBitmap(picture.getCompressedImage());
-//		holder.text.setText(picture.getMessage());
-//		if(mOnItemClickListener != null){
-//			holder.itemView.setOnClickListener(new View.OnClickListener() {
-//				@Override
-//				public void onClick(View v) {
-//					mOnItemClickListener.onItemClick(v, position);
-//				}
-//			});
-//		}
 		if (!isHeaderView(position) && !isFooterView(position)) {
 			if (haveHeaderView()) {
 				position--;
 			}
-			Picture picture = mPictureList.get(position);
-			holder.image.setImageBitmap(picture.getCompressedImage());
-			holder.text.setText(picture.getMessage());
+			Image image = mImageList.get(position);
+			holder.image.setImageBitmap(image.getCompressedImage());
+			holder.text.setText(image.getMessage());
+			//自定义点击事件
 			if(mOnItemClickListener != null){
 				int finalPosition = position;
 				holder.itemView.setOnClickListener(new View.OnClickListener() {
@@ -91,7 +85,7 @@ public class PictureAdapter extends RecyclerView.Adapter<PictureAdapter.ViewHold
 
 	@Override
 	public int getItemCount() {
-		int count = (mPictureList == null ? 0 : mPictureList.size());
+		int count = (mImageList == null ? 0 : mImageList.size());
 		if (VIEW_FOOTER != null) {
 			count++;
 		}
@@ -99,11 +93,6 @@ public class PictureAdapter extends RecyclerView.Adapter<PictureAdapter.ViewHold
 			count++;
 		}
 		return count;
-//		return mPictureList.size();
-	}
-
-	public interface OnItemClickListener {
-		void onItemClick(View view, int position);
 	}
 
 	public void setOnItemClickListener(OnItemClickListener onItemClickListener) {
@@ -119,7 +108,6 @@ public class PictureAdapter extends RecyclerView.Adapter<PictureAdapter.ViewHold
 		} else {
 			return TYPE_NORMAL;
 		}
-//		return position;
 	}
 
 	@Override
@@ -134,30 +122,34 @@ public class PictureAdapter extends RecyclerView.Adapter<PictureAdapter.ViewHold
 		}
 	}
 
-	private View getLayout(int layoutId) {
-		return LayoutInflater.from(mContext).inflate(layoutId, null);
-	}
-
+	/**
+	 * 添加头部
+	 * @param headerView 是头部
+	 */
 	public void addHeaderView(View headerView) {
 		if (haveHeaderView()) {
-			throw new IllegalStateException("hearview has already exists!");
+			throw new IllegalStateException("headerView has already exists!");
 		} else {
 			//避免出现宽度自适应
-			ViewGroup.LayoutParams params = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+			ViewGroup.LayoutParams params = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+					ViewGroup.LayoutParams.WRAP_CONTENT);
 			headerView.setLayoutParams(params);
 			VIEW_HEADER = headerView;
-//			VIEW_HEADER.setVisibility(View.INVISIBLE);
 			ifGridLayoutManager();
 			notifyItemInserted(0);
 		}
-
 	}
 
+	/**
+	 * 添加尾部
+	 * @param footerView 是尾部
+	 */
 	public void addFooterView(View footerView) {
 		if (haveFooterView()) {
 			throw new IllegalStateException("footerView has already exists!");
 		} else {
-			ViewGroup.LayoutParams params = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+			ViewGroup.LayoutParams params = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+					ViewGroup.LayoutParams.WRAP_CONTENT);
 			footerView.setLayoutParams(params);
 			VIEW_FOOTER = footerView;
 			VIEW_FOOTER.setVisibility(View.VISIBLE);
@@ -166,34 +158,73 @@ public class PictureAdapter extends RecyclerView.Adapter<PictureAdapter.ViewHold
 		}
 	}
 
+	/**
+	 * 获取所使用的layout
+	 * @param layoutId 是所使用的layout文件的布局id
+	 * @return 使用的layout
+	 */
+	private View getLayout(int layoutId) {
+		return LayoutInflater.from(mContext).inflate(layoutId, null);
+	}
+
+	/**
+	 * 在网格流的显示下让头部和尾部自成一行
+	 */
 	private void ifGridLayoutManager() {
-		if (mRecyclerView == null) return;
+		if (mRecyclerView == null) {
+			return;
+		}
 		final RecyclerView.LayoutManager layoutManager = mRecyclerView.getLayoutManager();
 		if (layoutManager instanceof GridLayoutManager) {
-			final GridLayoutManager.SpanSizeLookup originalSpanSizeLookup = ((GridLayoutManager) layoutManager).getSpanSizeLookup();
 			((GridLayoutManager) layoutManager).setSpanSizeLookup(new GridLayoutManager.SpanSizeLookup() {
 				@Override
 				public int getSpanSize(int position) {
-					return (isHeaderView(position) || isFooterView(position)) ? ((GridLayoutManager) layoutManager).getSpanCount() : 1;
+					return (isHeaderView(position) || isFooterView(position))
+							? ((GridLayoutManager) layoutManager).getSpanCount() : 1;
 				}
 			});
 		}
 	}
 
+	/**
+	 * 判断是否已经存在头部
+	 * @return true是存在，false是不存在
+	 */
 	private boolean haveHeaderView() {
 		return VIEW_HEADER != null;
 	}
 
+	/**
+	 * 判断是否已经存在尾部
+	 * @return true是存在，false是不存在
+	 */
 	public boolean haveFooterView() {
 		return VIEW_FOOTER != null;
 	}
 
+	/**
+	 * 判断该位置是不是头部
+	 * @param position 是view的位置
+	 * @return true代表是，false代表不是
+	 */
 	private boolean isHeaderView(int position) {
 		return haveHeaderView() && position == 0;
 	}
 
+	/**
+	 * 判断该位置是不是尾部
+	 * @param position 是view的位置
+	 * @return true代表是，false代表不是
+	 */
 	private boolean isFooterView(int position) {
 		return haveFooterView() && position == getItemCount() - 1;
+	}
+
+	/**
+	 * 注册点击接口
+	 */
+	public interface OnItemClickListener {
+		void onItemClick(View view, int position);
 	}
 
 }

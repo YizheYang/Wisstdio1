@@ -1,161 +1,97 @@
+/*
+ * Copyright <2021> WISStudio Inc.
+ */
 package com.github.YizheYang;
 
 import android.annotation.SuppressLint;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.drawable.BitmapDrawable;
-import android.media.Image;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Looper;
 import android.os.Message;
-import android.util.Log;
-import android.view.Menu;
-import android.view.MenuItem;
 import android.view.View;
-import android.widget.ImageView;
+import android.widget.ProgressBar;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
+import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URL;
+import java.util.ArrayList;
 
-import static java.lang.Thread.sleep;
+/**
+ * 显示本地图片的第二个活动，由主活动显式启动
+ * @author 一只羊
+ */
 
 public class SecondActivity extends AppCompatActivity {
-	private static final String TAG = "SecondActivity";
-	private ImageView imageView;
 
-	@SuppressLint("HandlerLeak")
-	Handler handler = new Handler(){
-		@Override
-		public void handleMessage(@NonNull Message msg) {
-			super.handleMessage(msg);
-			if (msg.what == 1){
-				Bitmap bitmap = (Bitmap) msg.obj;
-				imageView.setImageBitmap(bitmap);
-			}
-		}
-	};
+	private final ArrayList<Image> imageList = new ArrayList<>();
+	private ImageAdapter adapter;
+	private MySQLiteOpenHelper myHelper;
+	private ProgressBar pgb;
 
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_second);
-		imageView = (ImageView)findViewById(R.id.largeImage);
-		byte[] data = getIntent().getByteArrayExtra("extra_data");
-		Bitmap bitmap = BitmapFactory.decodeByteArray(data, 0, data.length);
-		Message msg = new Message();
-		msg.what = 1;
-		msg.obj = bitmap;
-		handler.sendMessage(msg);
+		this.setTitle(R.string.second_title);
+		pgb = findViewById(R.id.progressbar_top2);
+		RecyclerView recyclerView = findViewById(R.id.recyclerView2);
+		recyclerView.setLayoutManager(new GridLayoutManager(SecondActivity.this, 3));
+		adapter = new ImageAdapter(imageList, SecondActivity.this);
+		recyclerView.setAdapter(adapter);
+		myHelper = new MySQLiteOpenHelper(SecondActivity.this, "Image.db", null, 1);
+		initImage();
+	}
 
-		findViewById(R.id.largeImage).setOnClickListener(new View.OnClickListener() {
-			@Override
-			public void onClick(View v) {
-				ActivityCompat.finishAfterTransition(SecondActivity.this);
+	/**
+	 * 用来加载本地的图片
+	 * @param db是数据库对象，cs是从中读取到的信息，再将信息加载出来放到数组中，然后用handler更新UI
+	 */
+	private void initImage() {
+		new Thread(() -> {
+			String msg, lct;
+			Message img;
+			SQLiteDatabase db = myHelper.getWritableDatabase();
+			Cursor cs = db.query("SavedImage", null, null, null,
+					null, null, null);
+			if (cs.moveToFirst()) {
+				do {
+					msg = cs.getString(cs.getColumnIndex("MESSAGE"));
+					lct = cs.getString(cs.getColumnIndex("LOCATION"));
+					imageList.add(new Image(msg, BitmapFactory.decodeFile(lct)));
+					img = new Message();
+					img.what = 1;
+					addImage.sendMessage(img);
+				} while (cs.moveToNext());
+			} else {
+				img = new Message();
+				img.what = 0;
+				addImage.sendMessage(img);
 			}
-		});
-
+			cs.close();
+		}).start();
 	}
 
-	@Override
-	public boolean onCreateOptionsMenu(Menu menu) {
-		getMenuInflater().inflate(R.menu.second, menu);
-		return true;
-	}
-
-	@Override
-	public boolean onOptionsItemSelected(@NonNull MenuItem item) {
-		switch (item.getItemId()){
-			case R.id.save:
-				Toast.makeText(SecondActivity.this, "saved", Toast.LENGTH_SHORT).show();
-				break;
-			default:
+	/**
+	 * 更新UI
+	 */
+	@SuppressLint("HandlerLeak")
+	private final Handler addImage = new Handler(Looper.getMainLooper()) {
+		@Override
+		public void handleMessage(@NonNull Message msg) {
+			super.handleMessage(msg);
+			Image tempImage;
+			if (msg.what == 1) {
+				adapter.notifyDataSetChanged();
+				pgb.setVisibility(View.GONE);
+			} else {
+				Toast.makeText(SecondActivity.this, "ERROR", Toast.LENGTH_SHORT).show();
+			}
 		}
-		return true;
-	}
-
-	private void savebitmap(Bitmap bitmap)
-	{
-		//创建文件，因为不存在2级目录，所以不用判断exist，要保存png，这里后缀就是png，要保存jpg，后缀就用jpg
-		File file=new File("/pic/mfw.jpg");
-		try {
-			FileOutputStream fileOutputStream = new FileOutputStream(file);
-			//压缩图片，如果要保存png，就用Bitmap.CompressFormat.PNG，要保存jpg就用Bitmap.CompressFormat.JPEG,质量是100%，表示不压缩
-			bitmap.compress(Bitmap.CompressFormat.JPEG, 100, fileOutputStream);
-			fileOutputStream.flush();
-			fileOutputStream.close();
-			Toast.makeText(SecondActivity.this, "写入成功!", Toast.LENGTH_SHORT).show();
-		} catch (IOException e) {
-			e.printStackTrace();
-		} finally {
-			bitmap.recycle();
-			bitmap = null;
-		}
-
-	}
-
-	//	private String getExactUrl(String url) throws IOException {
-//		URL u = new URL(url);
-//		HttpURLConnection con = (HttpURLConnection) u.openConnection();
-//		con.setRequestMethod("GET");
-//		con.setConnectTimeout(5 * 1000);
-//		con.setReadTimeout(8 * 1000);
-//		InputStream in = con.getInputStream();
-//		BufferedReader br = new BufferedReader(new InputStreamReader(in));
-//		StringBuilder res = new StringBuilder();
-//		String line;
-//		while ((line = br.readLine()) != null){
-//			res.append(line);
-//		}
-//		String result = (String)res.toString();
-//		result = result.substring(result.indexOf("[") + 2 , result.indexOf("]") - 1);//cut
-//		return result;
-//	}
-//
-//	private void sendRequestWitHttpURLConnection(){
-//		new Thread(new Runnable() {
-//			@Override
-//			public void run() {
-//				try {
-//					Log.d(TAG, "run: " + Thread.currentThread().getId());
-//					URL url = new URL(getExactUrl(path));
-//					HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-//					connection.setRequestMethod("GET");
-//					connection.setConnectTimeout(5 * 1000);
-//					connection.setReadTimeout(8 * 1000);
-//					if (connection.getResponseCode() == 200){
-//						InputStream in = connection.getInputStream();
-//						Bitmap bitmap = BitmapFactory.decodeStream(in);
-//						Object[] obj = new Object[2];
-//						obj[0] = bitmap;
-//						obj[1] = url.getAuthority();
-//						Message pic = new Message();
-//						pic.what = 1;
-//						pic.obj = obj;
-//						handler.sendMessage(pic);
-//						//						Log.d(TAG, "run: " + url.getPath());
-//						//						Log.d(TAG, "run: " + bitmap);
-//					}
-//					else{
-//						Message message = new Message();
-//						message.what = 0;
-//						handler.sendMessage(message);
-//					}
-//					sleep(1000);
-//				} catch (Exception e) {
-//					e.printStackTrace();
-//				}
-//			}
-//		}).start();
-//	}
+	};
 }

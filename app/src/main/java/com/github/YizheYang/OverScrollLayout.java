@@ -1,3 +1,6 @@
+/*
+ * Copyright <2021> WISStudio Inc.
+ */
 package com.github.YizheYang;
 
 import android.content.Context;
@@ -11,26 +14,20 @@ import android.widget.LinearLayout;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+/**
+ * 网上找的滑动类，有滑动到底部或者顶部回弹的效果，但是效果不好
+ * @author 一只羊
+ */
 public class OverScrollLayout extends LinearLayout {
+
+	private static final float DAMPING_COEFFICIENT = 0.3f;//阻尼系数
 	private static final int ANIM_TIME = 400;
-
 	private RecyclerView childView;
-
-	private PictureAdapter adapter;
-
+	private ImageAdapter adapter;
 	private Rect original = new Rect();
-
 	private boolean isMoved = false;
-
 	private float startYpos;
-
-	/**
-	 * 阻尼系数
-	 */
-	private static final float DAMPING_COEFFICIENT = 0.3f;
-
 	private boolean isSuccess = false;
-
 	private ScrollListener mScrollListener;
 
 	public OverScrollLayout(Context context) {
@@ -43,18 +40,6 @@ public class OverScrollLayout extends LinearLayout {
 
 	public OverScrollLayout(Context context, AttributeSet attrs, int defStyleAttr) {
 		super(context, attrs, defStyleAttr);
-	}
-
-	@Override
-	protected void onFinishInflate() {
-		super.onFinishInflate();
-		childView = (RecyclerView) getChildAt(0);
-	}
-
-	@Override
-	protected void onLayout(boolean changed, int l, int t, int r, int b) {
-		super.onLayout(changed, l, t, r, b);
-		original.set(childView.getLeft(), childView.getTop(), childView.getRight(), childView.getBottom());
 	}
 
 	public void setScrollListener(ScrollListener listener) {
@@ -73,6 +58,7 @@ public class OverScrollLayout extends LinearLayout {
 		switch (ev.getAction()) {
 			case MotionEvent.ACTION_DOWN:
 				startYpos = ev.getY();
+
 			case MotionEvent.ACTION_MOVE:
 				int scrollYpos = (int) (ev.getY() - startYpos);
 				boolean pullDown = scrollYpos > 0 && canPullDown();
@@ -86,9 +72,7 @@ public class OverScrollLayout extends LinearLayout {
 					}
 					isMoved = true;
 					isSuccess = false;
-					adapter = (PictureAdapter)childView.getAdapter();
-//					adapter.VIEW_HEADER.setVisibility(VISIBLE);
-//					adapter.VIEW_FOOTER.setVisibility(VISIBLE);
+					adapter = (ImageAdapter)childView.getAdapter();
 					return true;
 				} else {
 					startYpos = ev.getY();
@@ -96,6 +80,7 @@ public class OverScrollLayout extends LinearLayout {
 					isSuccess = true;
 					return super.dispatchTouchEvent(ev);
 				}
+
 			case MotionEvent.ACTION_UP:
 				if (isMoved) {
 					recoverLayout();
@@ -104,28 +89,6 @@ public class OverScrollLayout extends LinearLayout {
 			default:
 				return true;
 		}
-	}
-
-	/**
-	 * 取消子view已经处理的事件
-	 *
-	 * @param ev event
-	 */
-	private void cancelChild(MotionEvent ev) {
-		ev.setAction(MotionEvent.ACTION_CANCEL);
-		super.dispatchTouchEvent(ev);
-	}
-
-	/**
-	 * 位置还原
-	 */
-	private void recoverLayout() {
-		TranslateAnimation anim = new TranslateAnimation(0, 0, childView.getTop() - original.top, 0);
-		anim.setDuration(ANIM_TIME);
-		childView.startAnimation(anim);
-		adapter = (PictureAdapter)childView.getAdapter();
-		childView.layout(original.left, original.top, original.right, original.bottom + adapter.VIEW_FOOTER.getMeasuredHeight());
-		isMoved = false;
 	}
 
 	/**
@@ -151,7 +114,8 @@ public class OverScrollLayout extends LinearLayout {
 		final int lastItemPosition = childView.getAdapter().getItemCount() - 1;
 		final int lastVisiblePosition = ((LinearLayoutManager) childView.getLayoutManager()).findLastVisibleItemPosition();
 		if (lastVisiblePosition >= lastItemPosition) {
-			final int childIndex = lastVisiblePosition - ((LinearLayoutManager) childView.getLayoutManager()).findFirstVisibleItemPosition();
+			final int childIndex = lastVisiblePosition - ((LinearLayoutManager) childView.getLayoutManager())
+					.findFirstVisibleItemPosition();
 			final int childCount = childView.getChildCount();
 			final int index = Math.min(childIndex, childCount - 1);
 			final View lastVisibleChild = childView.getChildAt(index);
@@ -162,6 +126,39 @@ public class OverScrollLayout extends LinearLayout {
 		return false;
 	}
 
+	@Override
+	protected void onFinishInflate() {
+		super.onFinishInflate();
+		childView = (RecyclerView) getChildAt(0);
+	}
+
+	@Override
+	protected void onLayout(boolean changed, int l, int t, int r, int b) {
+		super.onLayout(changed, l, t, r, b);
+		original.set(childView.getLeft(), childView.getTop(), childView.getRight(), childView.getBottom());
+	}
+
+	/**
+	 * 取消子view已经处理的事件
+	 *
+	 * @param ev event
+	 */
+	private void cancelChild(MotionEvent ev) {
+		ev.setAction(MotionEvent.ACTION_CANCEL);
+		super.dispatchTouchEvent(ev);
+	}
+
+	/**
+	 * 位置还原
+	 */
+	private void recoverLayout() {
+		TranslateAnimation anim = new TranslateAnimation(0, 0, childView.getTop() - original.top, 0);
+		anim.setDuration(ANIM_TIME);
+		childView.startAnimation(anim);
+		adapter = (ImageAdapter)childView.getAdapter();
+		childView.layout(original.left, original.top, original.right, original.bottom + adapter.VIEW_FOOTER.getMeasuredHeight());
+		isMoved = false;
+	}
 
 	public interface ScrollListener {
 		/**

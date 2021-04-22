@@ -34,12 +34,7 @@
                     android:id="@+id/recyclerView"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"/>
-
             </com.github.YizheYang.OverScrollLayout>
-
-<!--                android:layout_marginTop="10dp"-->
-<!--                android:layout_marginBottom="10dp" -->
-
         </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
     <ProgressBar
@@ -48,5 +43,4 @@
         android:layout_height="50dp"
         android:layout_gravity="center"
         android:visibility="gone" />
-
 </LinearLayout>
