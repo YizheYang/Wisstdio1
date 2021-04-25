@@ -61,6 +61,6 @@ public class Image {
 		options.inSampleSize = scale;
 		options.inJustDecodeBounds = false;
 		return BitmapFactory.decodeByteArray(data, 0, data.length, options);
-//		return Bitmap.createScaledBitmap(image ,130 ,130 ,true);
+//		return Bitmap.createScaledBitmap(image ,130 ,130 ,true);//这是原来的缩小方法，但是后来发现所占的内存并没有减小
 	}
 }

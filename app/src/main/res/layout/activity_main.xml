@@ -7,12 +7,6 @@
     android:orientation="vertical"
     tools:context=".MainActivity">
 
-    <ImageView
-        android:id="@+id/largeImageTest"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:visibility="gone"/>
-
     <ProgressBar
         android:id="@+id/progressbar_top"
         android:layout_width="50dp"
@@ -36,11 +30,4 @@
                     android:layout_height="match_parent"/>
             </com.github.YizheYang.OverScrollLayout>
         </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
-
-    <ProgressBar
-        android:id="@+id/progressbar_bottom"
-        android:layout_width="50dp"
-        android:layout_height="50dp"
-        android:layout_gravity="center"
-        android:visibility="gone" />
 </LinearLayout>

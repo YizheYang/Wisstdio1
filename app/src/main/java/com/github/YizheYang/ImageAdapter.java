@@ -110,6 +110,10 @@ public class ImageAdapter extends RecyclerView.Adapter<ImageAdapter.ViewHolder> 
 		}
 	}
 
+	/**
+	 * 让头部和尾部自成一行
+	 * @param recyclerView 是获取到的recyclerview
+	 */
 	@Override
 	public void onAttachedToRecyclerView(@NonNull RecyclerView recyclerView) {
 		try {

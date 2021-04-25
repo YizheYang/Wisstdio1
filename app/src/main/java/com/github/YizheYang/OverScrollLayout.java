@@ -24,7 +24,7 @@ public class OverScrollLayout extends LinearLayout {
 	private static final int ANIM_TIME = 400;
 	private RecyclerView childView;
 	private ImageAdapter adapter;
-	private Rect original = new Rect();
+	private final Rect original = new Rect();
 	private boolean isMoved = false;
 	private float startYpos;
 	private boolean isSuccess = false;
