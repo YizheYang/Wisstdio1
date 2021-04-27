@@ -49,6 +49,7 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.List;
 
 import static java.lang.Thread.sleep;
@@ -257,35 +258,47 @@ public class MainActivity extends AppCompatActivity {
 		ContentValues cv;
 		Cursor cs;
 		requestPower();//check permission
-		name = message.substring(message.indexOf("/") + 8, message.indexOf("."));
-		result = MediaStore.Images.Media.insertImage(getContentResolver(), bitmap, name, message);
+		name = message.substring(message.indexOf("/") + 8, message.indexOf(".")) + "_" + getTime();
 		db = myHelper.getWritableDatabase();
-		cs = db.query("SavedImage", null, "MESSAGE = ?", new String[]{message},
+		cs = db.query("SavedImage", null, "URL = ?", new String[]{"https://cdn.shibe.online" + message},
 				null, null, null);
 		if (cs.moveToFirst()) {
 			do {
-				if (cs.getString(cs.getColumnIndex("MESSAGE")).equals(message)) {
+				if (cs.getString(cs.getColumnIndex("URL")).equals("https://cdn.shibe.online" + message)) {
 					Toast.makeText(MainActivity.this, "图片已存在", Toast.LENGTH_SHORT).show();
 					return;
 				}
 			} while (cs.moveToNext());
 		}
+		result = MediaStore.Images.Media.insertImage(getContentResolver(), bitmap, name, message);
 		it = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.parse(result));
 		sendBroadcast(it);
 		Toast.makeText(MainActivity.this, "保存成功!", Toast.LENGTH_SHORT).show();
 		cv = new ContentValues();
-		cv.put("MESSAGE", message);
+		cv.put("MESSAGE", name);
 		cv.put("LOCATION", Environment.getExternalStorageDirectory() + "/Pictures/" + name + ".jpg");
-		cv.put("URL", "https://cdn.shibe.online/shibes/" + name + ".jpg");
+		cv.put("URL", "https://cdn.shibe.online" + message);
 		db.insert("SavedImage", null, cv);
 		db.close();
 		cs.close();
 	}
 
+	private String getTime() {
+		Calendar calendar = Calendar.getInstance();
+		int year = calendar.get(Calendar.YEAR);
+		int month = calendar.get(Calendar.MONTH);
+		int day = calendar.get(Calendar.DAY_OF_MONTH);
+		int hour = calendar.get(Calendar.HOUR_OF_DAY);
+		int minute = calendar.get(Calendar.MINUTE);
+		int second = calendar.get(Calendar.SECOND);
+		return String.valueOf(year) + String.valueOf(month) + String.valueOf(day) + String.valueOf(hour)
+				+ String.valueOf(minute) + String.valueOf(second);
+	}
+
 	/**
 	 * 请求所需的权限
 	 */
-	public void requestPower() {
+	private void requestPower() {
 		if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
 				!= PackageManager.PERMISSION_GRANTED) {
 			//refuse == true

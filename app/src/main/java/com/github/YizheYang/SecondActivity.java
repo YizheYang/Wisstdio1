@@ -38,6 +38,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Calendar;
 
 /**
  * 显示本地图片的第二个活动，由主活动显式启动
@@ -51,15 +52,15 @@ public class SecondActivity extends AppCompatActivity {
 	private ProgressBar pgb;
 	private ImageView large2;
 	private AlertDialog.Builder builder;
-	private SQLiteDatabase db;
+	private MySQLiteOpenHelper myHelper;
 
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_second);
 		this.setTitle(R.string.second_title);
 		pgb = findViewById(R.id.progressbar_top2);
-		MySQLiteOpenHelper myHelper = new MySQLiteOpenHelper(SecondActivity.this, "Image.db", null, 1);
-		db = myHelper.getWritableDatabase();
+		myHelper = new MySQLiteOpenHelper(SecondActivity.this, "Image.db", null, 1);
+		myHelper.getWritableDatabase();
 
 		RecyclerView recyclerView = findViewById(R.id.recyclerView2);
 		recyclerView.setLayoutManager(new GridLayoutManager(SecondActivity.this, 3));
@@ -110,7 +111,7 @@ public class SecondActivity extends AppCompatActivity {
 				adapter.notifyDataSetChanged();
 				pgb.setVisibility(View.GONE);
 			} else {
-				Toast.makeText(SecondActivity.this, "ERROR", Toast.LENGTH_SHORT).show();
+				Toast.makeText(SecondActivity.this, "获取不到本地图片", Toast.LENGTH_SHORT).show();
 			}
 		}
 	};
@@ -144,6 +145,8 @@ public class SecondActivity extends AppCompatActivity {
 			String msg, lct;
 			Bitmap bm;
 			Message img;
+			SQLiteDatabase db;
+			db = myHelper.getWritableDatabase();
 			Cursor cs = db.query("SavedImage", null, null, null, null, null, null);
 			if (cs.moveToFirst()) {
 				do {
@@ -165,6 +168,7 @@ public class SecondActivity extends AppCompatActivity {
 				addImage.sendMessage(img);
 			}
 			cs.close();
+			db.close();
 		}).start();
 	}
 
@@ -178,26 +182,30 @@ public class SecondActivity extends AppCompatActivity {
 		Intent it;
 		ContentValues cv;
 		Cursor cs;
-		name = message.substring(message.indexOf("/") + 8, message.indexOf("."));
-		result = MediaStore.Images.Media.insertImage(getContentResolver(), bitmap, name, message);
-		cs = db.query("SavedImage", null, "MESSAGE = ?", new String[]{message}, null, null, null);
+		SQLiteDatabase db;
+		db = myHelper.getWritableDatabase();
+		message = "/shibes/" + message.substring(0, message.indexOf("_")) + ".jpg";
+		name = message.substring(message.indexOf("/") + 8, message.indexOf(".")) + "_" + getTime();
+		cs = db.query("SavedImage", null, "URL = ?", new String[]{"https://cdn.shibe.online" + message}, null, null, null);
 		if (cs.moveToFirst()) {
 			do {
-				if (cs.getString(cs.getColumnIndex("MESSAGE")).equals(message)) {
+				if (cs.getString(cs.getColumnIndex("URL")).equals("https://cdn.shibe.online" + message)) {
 					Toast.makeText(SecondActivity.this, "图片已存在", Toast.LENGTH_SHORT).show();
 					return;
 				}
 			} while (cs.moveToNext());
 		}
+		result = MediaStore.Images.Media.insertImage(getContentResolver(), bitmap, name, message);
 		it = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.parse(result));
 		sendBroadcast(it);
-		Toast.makeText(SecondActivity.this, "保存成功!", Toast.LENGTH_SHORT).show();
 		cv = new ContentValues();
-		cv.put("MESSAGE", message);
+		cv.put("MESSAGE", name);
 		cv.put("LOCATION", Environment.getExternalStorageDirectory() + "/Pictures/" + name + ".jpg");
-		cv.put("URL", "https://cdn.shibe.online/shibes/" + name + ".jpg");
+		cv.put("URL", "https://cdn.shibe.online" + message);
 		db.insert("SavedImage", null, cv);
+		Toast.makeText(SecondActivity.this, "保存成功!", Toast.LENGTH_SHORT).show();
 		cs.close();
+		db.close();
 	}
 
 	/**
@@ -207,20 +215,44 @@ public class SecondActivity extends AppCompatActivity {
 	private void deleteImage(String message) {
 		Uri uri;
 		ContentResolver cr;
-		String name, location, where;
+		String location = null, where;
 		Intent scanIntent;
 		Uri contentUri;
+		SQLiteDatabase db;
+		db = myHelper.getWritableDatabase();
 		uri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
 		cr = getApplicationContext().getContentResolver();
-		name = message.substring(message.indexOf("/") + 8, message.indexOf("."));
-		location = Environment.getExternalStorageDirectory() + "/Pictures/" + name + ".jpg";
+		Cursor cs = db.query("SavedImage", null, "MESSAGE = ?",
+				new String[]{message}, null, null, null);
+		if (cs.moveToFirst()) {
+			location = cs.getString(cs.getColumnIndex("LOCATION"));
+		}
+//		name = message.substring(message.indexOf("/") + 8, message.indexOf("."));
+//		location = Environment.getExternalStorageDirectory() + "/Pictures/" + name + ".jpg";
 		where = MediaStore.Images.Media.DATA + "='" + location + "'";
 		cr.delete(uri, where, null);
 		scanIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
-		contentUri = Uri.fromFile(new File(location));
+		contentUri = Uri.fromFile(new File(Environment.getExternalStorageDirectory() + "/Pictures/"));
 		scanIntent.setData(contentUri);
 		sendBroadcast(scanIntent);
-		db.delete("SavedImage", "MESSAGE = ?", new String[]{message});
+		db.delete("SavedImage", "LOCATION = ?", new String[]{location});
 		Toast.makeText(SecondActivity.this, "删除成功", Toast.LENGTH_SHORT).show();
+		db.close();
+	}
+
+	/**
+	 * 获取当前的系统时间
+	 * @return 当前的时间
+	 */
+	private String getTime() {
+		Calendar calendar = Calendar.getInstance();
+		int year = calendar.get(Calendar.YEAR);
+		int month = calendar.get(Calendar.MONTH);
+		int day = calendar.get(Calendar.DAY_OF_MONTH);
+		int hour = calendar.get(Calendar.HOUR_OF_DAY);
+		int minute = calendar.get(Calendar.MINUTE);
+		int second = calendar.get(Calendar.SECOND);
+		return String.valueOf(year) + String.valueOf(month) + String.valueOf(day) + String.valueOf(hour)
+				+ String.valueOf(minute) + String.valueOf(second);
 	}
 }
